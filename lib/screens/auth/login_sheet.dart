@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:app1/widgets/auth/register_sheet.dart';
+import 'package:app1/screens/auth/register_sheet.dart';
 /*
     Why DraggableScrollableSheet here?
       A widget that creates a scrollable sheet that can be dragged to resize.
@@ -200,7 +200,7 @@ class _LoginSheetState extends State<LoginSheet> {
                       onPressed: () => {
                         Navigator.pop(context),
                         // Proceed to home screen after login
-                        Navigator.pushNamed(context, '/home'),
+                        Navigator.pushNamed(context, '/main'),
                       },
                       child: Text('Login'),
                     ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'screens/welcome_screen.dart';
+import 'config/routes.dart';
 
 void main() {
   runApp(const MainApp());
@@ -10,6 +11,10 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(home: const WelcomeScreen());
+    return MaterialApp(
+      title: 'Food App',
+      initialRoute: '/',
+      routes: AppRoutes.getRoutes(),
+    );
   }
 }

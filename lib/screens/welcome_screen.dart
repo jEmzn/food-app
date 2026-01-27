@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:app1/widgets/login_sheet.dart';
+import 'package:app1/screens/auth/login_sheet.dart';
 
 const Color fade1 = Colors.white;
 final Color fade2 = fade1.withValues(alpha: 0.63);
@@ -35,10 +35,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     );
   }
 
-  @override
-  void initState() {
-    super.initState();
-  }
 }
 
 class BottomCardLogin extends StatelessWidget {
