@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:app1/models/user_profile.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:app1/config/app_theme.dart';
 
 /*
   Stateful Widget for Onboarding Screen
@@ -36,7 +37,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final TextEditingController _ageController = TextEditingController();
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
-  static const Color buttonColor = Color(0xFF73CA31);
+  static const Color buttonColor = AppTheme.primaryColor;
 
   @override
   void dispose() {
@@ -210,7 +211,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 onPressed: _nextPage,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: buttonColor,
-                  foregroundColor: Colors.white,
+                  foregroundColor: AppTheme.backgroundColor,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
@@ -296,7 +297,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   decoration: BoxDecoration(
                     color: _selectedActivityLevel == level
                         ? buttonColor
-                        : Colors.white,
+                        : AppTheme.backgroundColor,
                     border: Border.all(
                       color: _selectedActivityLevel == level
                           ? buttonColor
@@ -318,7 +319,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                   fontWeight: FontWeight.w500,
                                   fontSize: 16,
                                   color: _selectedActivityLevel == level
-                                      ? Colors.white
+                                      ? AppTheme.backgroundColor
                                       : Colors.black,
                                 ),
                               ),
@@ -340,7 +341,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             padding: const EdgeInsets.only(right: 12),
                             child: Icon(
                               Icons.check_circle,
-                              color: Colors.white,
+                              color: AppTheme.backgroundColor,
                             ),
                           ),
                       ],
@@ -387,7 +388,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           decoration: BoxDecoration(
                             color: _selectedGoal == goal
                                 ? buttonColor
-                                : Colors.white,
+                                : AppTheme.backgroundColor,
                             border: Border.all(
                               color: _selectedGoal == goal
                                   ? buttonColor

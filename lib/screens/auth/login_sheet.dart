@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:app1/screens/auth/register_sheet.dart';
+import 'package:app1/config/app_theme.dart';
 /*
     Why DraggableScrollableSheet here?
       A widget that creates a scrollable sheet that can be dragged to resize.
@@ -37,7 +38,7 @@ class LoginSheet extends StatefulWidget {
 
 class _LoginSheetState extends State<LoginSheet> {
   static bool _rememberMe = false;
-  static const Color primaryColor = Color(0xFF73CA31);
+  // static const Color primaryColor = Color(0xFF73CA31);
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
@@ -180,7 +181,7 @@ class _LoginSheetState extends State<LoginSheet> {
                             style: GoogleFonts.inter(
                               fontSize: 12,
                               fontWeight: FontWeight.w400,
-                              color: primaryColor,
+                              color: AppTheme.primaryColor,
                             ),
                           ),
                         ),
@@ -189,7 +190,7 @@ class _LoginSheetState extends State<LoginSheet> {
                     SizedBox(height: 24),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryColor,
+                        backgroundColor: AppTheme.primaryColor,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30),
@@ -285,7 +286,7 @@ class _LoginSheetState extends State<LoginSheet> {
                         'Sign up',
                         style: GoogleFonts.inter(
                           fontSize: 12,
-                          color: primaryColor,
+                          color: AppTheme.primaryColor,
                         ),
                       ),
                     ),

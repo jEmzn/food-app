@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:app1/widgets/botttom_nav.dart';
 import 'package:app1/screens/home_screen.dart';
 import 'package:app1/screens/favorites_screen.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:app1/screens/stats_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -17,7 +17,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     const HomeScreen(),
     const FavoriteScreen(),
-    Center(child: Text('Plan Screen')),
+    const StatsScreen(),
     Center(child: Text('Profile Screen')),
   ];
 
@@ -30,6 +30,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
       backgroundColor: Colors.white,
       body:
           _screens[_selectedScreenIndex < _screens.length

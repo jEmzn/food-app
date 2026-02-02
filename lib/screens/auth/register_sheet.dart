@@ -1,3 +1,4 @@
+import 'package:app1/config/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:app1/screens/auth/login_sheet.dart';
@@ -48,7 +49,7 @@ class _RegisterSheetState extends State<RegisterSheet> {
         return Container(
           decoration: const BoxDecoration(
             borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-            color: Colors.white,
+            color: AppTheme.backgroundColor,
           ),
           child: ListView(
             controller: scrollController,
