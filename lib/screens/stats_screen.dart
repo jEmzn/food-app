@@ -1,5 +1,4 @@
 import 'package:app1/config/app_theme.dart';
-import 'package:app1/test/chart_test.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:app1/widgets/graph.dart';
@@ -54,14 +53,6 @@ class StatsScreen extends StatelessWidget {
             SizedBox(height: 20),
             _buildCalenderCard(),
             SizedBox(height: 24),
-            Text(
-              'Weekly Calorie Intake',
-              style: GoogleFonts.poppins(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            SizedBox(height: 16),
             GraphWidget(
               valueData: [0.1, 0.5, 0.3, 0.7, 0.2, 0.4, 1],
               labels: _days,
@@ -128,7 +119,7 @@ class StatsScreen extends StatelessWidget {
         width: 42,
         padding: EdgeInsets.symmetric(vertical: 2, horizontal: 6),
         decoration: BoxDecoration(
-          color: AppTheme.backgroundColor,
+          color: Colors.white,
           borderRadius: BorderRadius.all(Radius.circular(30)),
           border: Border.all(
             color: Color.fromARGB(255, 212, 212, 212),
@@ -150,10 +141,10 @@ class StatsScreen extends StatelessWidget {
                 color: AppTheme.primarySoftColor,
                 shape: BoxShape.circle,
               ),
-              padding: EdgeInsets.all(8),
+              padding: EdgeInsets.all(6),
               child: Text(
                 day.toString(),
-                style: GoogleFonts.inter(fontSize: 12),
+                style: GoogleFonts.inter(fontSize: 10),
               ),
             ),
           ],

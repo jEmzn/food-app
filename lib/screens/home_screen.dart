@@ -199,6 +199,7 @@ class HomeScreen extends StatelessWidget {
               ],
             ),
           ),
+          SizedBox(height: 120),
         ],
       ),
     );
@@ -280,7 +281,7 @@ class HomeScreen extends StatelessWidget {
         Text(
           label,
           style: GoogleFonts.inter(
-            color: Colors.white.withOpacity(0.8),
+            color: Colors.white.withAlpha(204),
             fontSize: 12,
           ),
         ),

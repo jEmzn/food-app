@@ -34,7 +34,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       ),
     );
   }
-
 }
 
 class BottomCardLogin extends StatelessWidget {
@@ -42,7 +41,7 @@ class BottomCardLogin extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 360,
+      height: 450,
       width: BoxConstraints().maxWidth,
       padding: EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -54,8 +53,9 @@ class BottomCardLogin extends StatelessWidget {
         ),
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          SizedBox(height: 66),
+          SizedBox(height: 60),
           Text(
             'Eat Well.\nLive Better',
             style: GoogleFonts.poppins(
@@ -91,6 +91,7 @@ class BottomCardLogin extends StatelessWidget {
             },
             child: Text('Get Started'),
           ),
+          SizedBox(height: 50),
         ],
       ),
     );

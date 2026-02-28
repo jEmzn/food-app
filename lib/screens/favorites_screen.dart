@@ -1,4 +1,4 @@
-import 'package:app1/config/app_theme.dart';
+import 'package:app1/widgets/top_label.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:app1/widgets/categories_bar.dart';
@@ -20,41 +20,10 @@ class FavoriteScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: Text(
-                'Favorite Foods',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            SizedBox(height: 8),
+            TopLabel(textLabel: 'Favorite Foods'),
+            SizedBox(height: 18),
             CategoriesBar(),
             SizedBox(height: 24),
-            // Row(
-            //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            //   children: [
-            //     Text(
-            //       'Your Favorites',
-            //       style: GoogleFonts.poppins(
-            //         fontSize: 18,
-            //         fontWeight: FontWeight.w600,
-            //       ),
-            //     ),
-            //     Text(
-            //       'See All',
-            //       style: GoogleFonts.poppins(
-            //         fontSize: 14,
-            //         fontWeight: FontWeight.w500,
-            //         color: Colors.grey,
-            //       ),
-            //     ),
-            //   ],
-            // ),
-            // SizedBox(height: 16),
             GridView.count(
               padding: EdgeInsets.all(0),
               mainAxisSpacing: 16,
@@ -62,6 +31,7 @@ class FavoriteScreen extends StatelessWidget {
               childAspectRatio: 0.95,
               crossAxisCount: 2,
               shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
               children: [
                 _buildFavoriteItem('assets/images/food_image.png', 'Salad'),
                 _buildFavoriteItem(
@@ -111,7 +81,7 @@ class FavoriteScreen extends StatelessWidget {
         image: imagePath.isNotEmpty
             ? DecorationImage(image: AssetImage(imagePath), fit: BoxFit.cover)
             : null,
-        color: AppTheme.backgroundColor,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -133,7 +103,7 @@ class FavoriteScreen extends StatelessWidget {
               height: 60,
               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: Color(0xFF303030),
+                color: const Color.fromARGB(255, 50, 55, 34),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
@@ -168,7 +138,7 @@ class FavoriteScreen extends StatelessWidget {
                       // minimumSize: Size(50, 50),
                       padding: EdgeInsets.all(0),
                       shape: CircleBorder(),
-                      backgroundColor: AppTheme.backgroundColor,
+                      backgroundColor: Colors.white,
                       elevation: 0,
                     ),
                     child: Text(
@@ -176,7 +146,7 @@ class FavoriteScreen extends StatelessWidget {
                       style: GoogleFonts.poppins(
                         fontSize: 24,
                         fontWeight: FontWeight.w400,
-                        color: Color(0xFF303030),
+                        color: const Color.fromARGB(255, 50, 55, 34),
                       ),
                     ),
                   ),

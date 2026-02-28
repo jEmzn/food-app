@@ -1,7 +1,8 @@
 class UserProfile {
-  final String id;
+  String? id;
   final String name;
   final String email;
+  final String password;
   final int age;
   final double heightCm;
   final double weightKg;
@@ -11,15 +12,16 @@ class UserProfile {
   final List<String> dietaryRestrictions;
 
   UserProfile({
-    required this.id,
+    this.id,
     required this.name,
     required this.email,
-    required this.age,
-    required this.heightCm,
-    required this.weightKg,
-    required this.gender,
-    required this.activityLevel,
-    required this.goaltype,
+    required this.password,
+    this.age = 0,
+    this.heightCm = 0.0,
+    this.weightKg = 0.0,
+    this.gender = Gender.unknown,
+    this.activityLevel = ActivityLevel.sedentary,
+    this.goaltype = GoalType.maintainWeight,
     this.dietaryRestrictions = const [],
   });
 
@@ -54,6 +56,9 @@ class UserProfile {
       case ActivityLevel.extremelyActive:
         multiplier = 1.9;
         break;
+      case ActivityLevel.unknown:
+        multiplier = 0;
+        break;
     }
     return bmr * multiplier;
   }
@@ -63,6 +68,7 @@ class UserProfile {
     String? id,
     String? name,
     String? email,
+    String? password,
     int? age,
     double? heightCm,
     double? weightKg,
@@ -75,6 +81,7 @@ class UserProfile {
       id: id ?? this.id,
       name: name ?? this.name,
       email: email ?? this.email,
+      password: password ?? this.password,
       age: age ?? this.age,
       heightCm: heightCm ?? this.heightCm,
       weightKg: weightKg ?? this.weightKg,
@@ -90,6 +97,7 @@ class UserProfile {
       'id': id,
       'name': name,
       'email': email,
+      'password': password,
       'age': age,
       'heightCm': heightCm,
       'weightKg': weightKg,
@@ -105,6 +113,7 @@ class UserProfile {
       id: map['id'] ?? '',
       name: map['name'] ?? '',
       email: map['email'] ?? '',
+      password: map['password'] ?? '',
       age: map['age']?.toInt() ?? 0,
       heightCm: map['heightCm']?.toDouble() ?? 0.0,
       weightKg: map['weightKg']?.toDouble() ?? 0.0,
@@ -120,24 +129,36 @@ class UserProfile {
         (e) => e.toString().split('.').last == map['goalType'],
         orElse: () => GoalType.maintainWeight,
       ),
-      dietaryRestrictions:
-          List<String>.from(map['dietaryRestrictions'] ?? []),
+      dietaryRestrictions: List<String>.from(map['dietaryRestrictions'] ?? []),
     );
+  }
+
+  @override
+  String toString() {
+    return '''UserProfile(
+      id: $id, 
+      name: $name, 
+      email: $email,
+      password: $password, 
+      age: $age, 
+      heightCm: $heightCm,
+      weightKg: $weightKg, 
+      gender: $gender, 
+      activityLevel: $activityLevel, 
+      goaltype: $goaltype, 
+      dietaryRestrictions: $dietaryRestrictions)''';
   }
 }
 
-enum Gender { male, female }
+enum Gender { unknown, male, female }
 
 enum ActivityLevel {
+  unknown, // Default value for uninitialized state
   sedentary, // Little or no exercise
   lightlyActive, // Light exercise/sports 1-3 days/week
   moderatelyActive, // Moderate exercise/sports 3-5 days/week
   veryActive, // Hard exercise/sports 6-7 days/week
-  extremelyActive // Very hard exercise/physical job
+  extremelyActive, // Very hard exercise/physical job
 }
 
-enum GoalType {
-  loseWeight,
-  maintainWeight,
-  gainMuscle,
-}
+enum GoalType { unknown, loseWeight, maintainWeight, gainMuscle }

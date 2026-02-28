@@ -126,6 +126,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       id: '', // to be set from auth
       name: '', // to be set from auth
       email: '', // to be set from auth
+      password: '', // to be set from auth
       age: _age!,
       heightCm: _height!,
       weightKg: _weight!,
@@ -156,6 +157,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         return 'Hard exercise/sports 6-7 days a week';
       case ActivityLevel.extremelyActive:
         return 'Very hard exercise/sports & physical job or 2x training';
+      default:
+        return '';
     }
   }
 

@@ -1,3 +1,5 @@
+import 'package:app1/config/app_theme.dart';
+import 'package:app1/screens/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:app1/widgets/botttom_nav.dart';
 import 'package:app1/screens/home_screen.dart';
@@ -18,7 +20,7 @@ class _MainScreenState extends State<MainScreen> {
     const HomeScreen(),
     const FavoriteScreen(),
     const StatsScreen(),
-    Center(child: Text('Profile Screen')),
+    const ProfileScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -31,7 +33,7 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.backgroundColor,
       body:
           _screens[_selectedScreenIndex < _screens.length
               ? _selectedScreenIndex

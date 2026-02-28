@@ -1,7 +1,10 @@
-import 'package:app1/config/app_theme.dart';
+import 'dart:developer';
+
+import 'package:app1/models/user_profile.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:app1/screens/auth/login_sheet.dart';
+import 'package:app1/data/daos/user_doa.dart';
 /*
     Why DraggableScrollableSheet here?
       A widget that creates a scrollable sheet that can be dragged to resize.
@@ -39,6 +42,22 @@ class RegisterSheet extends StatefulWidget {
 class _RegisterSheetState extends State<RegisterSheet> {
   static bool _rememberMe = false;
   static const Color primaryColor = Color(0xFF73CA31);
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  static final UserDOA userDOA = UserDOA();
+
+  @override
+  void dispose() {
+    // Clean up the controller when the widget is disposed.
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
@@ -49,7 +68,7 @@ class _RegisterSheetState extends State<RegisterSheet> {
         return Container(
           decoration: const BoxDecoration(
             borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-            color: AppTheme.backgroundColor,
+            color: Colors.white,
           ),
           child: ListView(
             controller: scrollController,
@@ -91,6 +110,7 @@ class _RegisterSheetState extends State<RegisterSheet> {
               ),
               SizedBox(height: 8),
               TextField(
+                controller: _nameController,
                 decoration: InputDecoration(
                   hintText: 'Enter your Username',
                   hintStyle: GoogleFonts.inter(
@@ -122,6 +142,7 @@ class _RegisterSheetState extends State<RegisterSheet> {
               ),
               SizedBox(height: 8),
               TextField(
+                controller: _emailController,
                 decoration: InputDecoration(
                   hintText: 'Enter your Email',
                   hintStyle: GoogleFonts.inter(
@@ -153,6 +174,8 @@ class _RegisterSheetState extends State<RegisterSheet> {
               ),
               SizedBox(height: 8),
               TextField(
+                controller: _passwordController,
+                obscureText: true,
                 decoration: InputDecoration(
                   hintText: 'Enter your Password',
                   hintStyle: GoogleFonts.inter(
@@ -184,6 +207,8 @@ class _RegisterSheetState extends State<RegisterSheet> {
               ),
               SizedBox(height: 8),
               TextField(
+                controller: _confirmPasswordController,
+                obscureText: true,
                 decoration: InputDecoration(
                   hintText: 'Enter your Password',
                   hintStyle: GoogleFonts.inter(
@@ -242,9 +267,30 @@ class _RegisterSheetState extends State<RegisterSheet> {
                   textStyle: GoogleFonts.inter(fontSize: 16),
                   minimumSize: Size(double.infinity, 50),
                 ),
-                onPressed: () => {
-                  Navigator.pop(context),
-                  Navigator.pushNamed(context, '/auth/onboard'),
+                onPressed: () {
+                  // Navigator.pop(context),
+                  // Navigator.pushNamed(context, '/auth/onboard'),
+                  // showDialog(
+                  //   context: context,
+                  //   builder: (context) {
+                  //     return AlertDialog(
+                  //       title: Text('Registration Successful'),
+                  //       content: Text('''Details:
+                  //   Username: ${_nameController.text}
+                  //   Email: ${_emailController.text}
+                  //   Password: ${_passwordController.text}'''),
+                  //     );
+                  //   },
+                  // ),
+                  UserProfile newUser = UserProfile(
+                    name: _nameController.text,
+                    email: _emailController.text,
+                    password: _passwordController.text,
+                  );
+                  Future<int> result = userDOA.insertUser(newUser);
+                  result.then((value) {
+                    log('User inserted with id: $value');
+                  });
                 },
                 child: Text('Register'),
               ),
