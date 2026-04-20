@@ -1,10 +1,8 @@
-import 'dart:developer';
-
-import 'package:app1/models/user_profile.dart';
+import 'package:app1/services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:app1/screens/auth/login_sheet.dart';
-import 'package:app1/data/daos/user_doa.dart';
 /*
     Why DraggableScrollableSheet here?
       A widget that creates a scrollable sheet that can be dragged to resize.
@@ -42,11 +40,11 @@ class RegisterSheet extends StatefulWidget {
 class _RegisterSheetState extends State<RegisterSheet> {
   static bool _rememberMe = false;
   static const Color primaryColor = Color(0xFF73CA31);
+  bool _isLoading = false;
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  static final UserDOA userDOA = UserDOA();
 
   @override
   void dispose() {
@@ -267,32 +265,71 @@ class _RegisterSheetState extends State<RegisterSheet> {
                   textStyle: GoogleFonts.inter(fontSize: 16),
                   minimumSize: Size(double.infinity, 50),
                 ),
-                onPressed: () {
-                  // Navigator.pop(context),
-                  // Navigator.pushNamed(context, '/auth/onboard'),
-                  // showDialog(
-                  //   context: context,
-                  //   builder: (context) {
-                  //     return AlertDialog(
-                  //       title: Text('Registration Successful'),
-                  //       content: Text('''Details:
-                  //   Username: ${_nameController.text}
-                  //   Email: ${_emailController.text}
-                  //   Password: ${_passwordController.text}'''),
-                  //     );
-                  //   },
-                  // ),
-                  UserProfile newUser = UserProfile(
-                    name: _nameController.text,
-                    email: _emailController.text,
-                    password: _passwordController.text,
-                  );
-                  Future<int> result = userDOA.insertUser(newUser);
-                  result.then((value) {
-                    log('User inserted with id: $value');
-                  });
-                },
-                child: Text('Register'),
+                onPressed: _isLoading
+                    ? null
+                    : () async {
+                        if (_nameController.text.trim().isEmpty ||
+                            _emailController.text.trim().isEmpty ||
+                            _passwordController.text.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please fill in all fields'),
+                            ),
+                          );
+                          return;
+                        }
+                        if (_passwordController.text !=
+                            _confirmPasswordController.text) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Passwords do not match'),
+                            ),
+                          );
+                          return;
+                        }
+                        setState(() => _isLoading = true);
+                        try {
+                          await AuthService.register(
+                            _nameController.text.trim(),
+                            _emailController.text.trim(),
+                            _passwordController.text,
+                          );
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                            Navigator.pushNamed(context, '/auth/onboard');
+                          }
+                        } on FirebaseAuthException catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(AuthService.friendlyError(e)),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  e.toString().replaceFirst('Exception: ', ''),
+                                ),
+                              ),
+                            );
+                          }
+                        } finally {
+                          if (mounted) setState(() => _isLoading = false);
+                        }
+                      },
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Register'),
               ),
               SizedBox(height: 32),
               Row(

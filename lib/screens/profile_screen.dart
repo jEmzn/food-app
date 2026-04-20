@@ -1,4 +1,5 @@
 import 'package:app1/config/app_theme.dart';
+import 'package:app1/services/auth_service.dart';
 import 'package:app1/widgets/top_label.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -130,9 +131,14 @@ class ProfileScreen extends StatelessWidget {
                         ),
                       ),
                       trailing: Icon(Icons.arrow_forward_ios, size: 16),
-                      onTap: () {
-                        // Handle option tap
-                      },
+                      onTap: option == 'Logout'
+                          ? () async {
+                              await AuthService.logout();
+                              if (context.mounted) {
+                                Navigator.pushReplacementNamed(context, '/');
+                              }
+                            }
+                          : () {},
                     ),
                     if (profileOptions.indexOf(option) == numOptions - 1)
                       SizedBox(height: 12),

@@ -1,3 +1,5 @@
+import 'package:app1/services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:app1/screens/auth/register_sheet.dart';
@@ -38,7 +40,17 @@ class LoginSheet extends StatefulWidget {
 
 class _LoginSheetState extends State<LoginSheet> {
   static bool _rememberMe = false;
-  // static const Color primaryColor = Color(0xFF73CA31);
+  bool _isLoading = false;
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
@@ -94,6 +106,8 @@ class _LoginSheetState extends State<LoginSheet> {
                     ),
                     SizedBox(height: 8),
                     TextField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
                       decoration: InputDecoration(
                         hintText: 'Enter your Email',
                         hintStyle: GoogleFonts.inter(
@@ -125,6 +139,8 @@ class _LoginSheetState extends State<LoginSheet> {
                     ),
                     SizedBox(height: 8),
                     TextField(
+                      controller: _passwordController,
+                      obscureText: true,
                       decoration: InputDecoration(
                         hintText: 'Enter your Password',
                         hintStyle: GoogleFonts.inter(
@@ -198,12 +214,66 @@ class _LoginSheetState extends State<LoginSheet> {
                         textStyle: GoogleFonts.inter(fontSize: 16),
                         minimumSize: Size(double.infinity, 50),
                       ),
-                      onPressed: () => {
-                        Navigator.pop(context),
-                        // Proceed to home screen after login
-                        Navigator.pushNamed(context, '/main'),
-                      },
-                      child: Text('Login'),
+                      onPressed: _isLoading
+                          ? null
+                          : () async {
+                              if (_emailController.text.trim().isEmpty ||
+                                  _passwordController.text.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Please enter your email and password',
+                                    ),
+                                  ),
+                                );
+                                return;
+                              }
+                              setState(() => _isLoading = true);
+                              try {
+                                await AuthService.login(
+                                  _emailController.text.trim(),
+                                  _passwordController.text,
+                                );
+                                if (context.mounted) {
+                                  Navigator.pop(context);
+                                  Navigator.pushNamed(context, '/main');
+                                }
+                              } on FirebaseAuthException catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        AuthService.friendlyError(e),
+                                      ),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        e
+                                            .toString()
+                                            .replaceFirst('Exception: ', ''),
+                                      ),
+                                    ),
+                                  );
+                                }
+                              } finally {
+                                if (mounted) setState(() => _isLoading = false);
+                              }
+                            },
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text('Login'),
                     ),
                     SizedBox(height: 32),
                     Row(

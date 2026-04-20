@@ -1,3 +1,5 @@
+import 'package:app1/data/daos/user_doa.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:app1/models/user_profile.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -120,13 +122,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     });
   }
 
-  void _finishOnboarding() {
-    // Collect data and save to user profile
-    UserProfile profile = UserProfile(
-      id: '', // to be set from auth
-      name: '', // to be set from auth
-      email: '', // to be set from auth
-      password: '', // to be set from auth
+  Future<void> _finishOnboarding() async {
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+    final profile = UserProfile(
+      id: firebaseUser?.uid ?? '',
+      name: firebaseUser?.displayName ?? '',
+      email: firebaseUser?.email ?? '',
+      password: '',
       age: _age!,
       heightCm: _height!,
       weightKg: _weight!,
@@ -135,10 +137,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       goaltype: _selectedGoal!,
     );
 
-    // TODO: Save profile to database or state management
+    await UserDOA().insertUser(profile);
 
-    // Navigate to home screen
-    Navigator.pushReplacementNamed(context, '/home');
+    if (mounted) {
+      Navigator.pushReplacementNamed(context, '/main');
+    }
   }
 
   String _formatEnum(String enumString) {

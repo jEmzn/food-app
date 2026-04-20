@@ -1,4 +1,5 @@
 import 'package:app1/config/app_theme.dart';
+import 'package:app1/services/api_service.dart';
 import 'package:app1/widgets/foods_card.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -7,6 +8,7 @@ import 'package:app1/widgets/categories.dart';
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
   static const String profileImage = 'assets/images/test_profile.jpg';
+  // late Iterable<Widget> _lastOptions = <Widget>[];
 
   @override
   Widget build(BuildContext context) {
@@ -97,6 +99,17 @@ class HomeScreen extends StatelessWidget {
                             ],
                           ),
                           child: SearchAnchor(
+                            viewHintText: 'Search Your Food',
+                            viewBackgroundColor: Colors.white,
+                            viewOnSubmitted: (String value) async {
+                              try {
+                                var data = await FoodApiService()
+                                    .fetchSearchFoods(value);
+                                debugPrint('API Response: $data');
+                              } catch (e) {
+                                debugPrint('Error: $e');
+                              }
+                            },
                             builder:
                                 (
                                   BuildContext context,
