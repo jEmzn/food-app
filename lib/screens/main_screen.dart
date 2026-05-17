@@ -1,5 +1,7 @@
 import 'package:app1/config/app_theme.dart';
+import 'package:app1/config/routes.dart';
 import 'package:app1/screens/profile_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:app1/widgets/botttom_nav.dart';
 import 'package:app1/screens/home_screen.dart';
@@ -15,6 +17,22 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedScreenIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    if (FirebaseAuth.instance.currentUser == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            AppRoutes.initialRoute,
+            (_) => false,
+          );
+        }
+      });
+    }
+  }
 
   final List<Widget> _screens = [
     const HomeScreen(),

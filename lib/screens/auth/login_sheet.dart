@@ -1,3 +1,4 @@
+import 'package:app1/config/routes.dart';
 import 'package:app1/services/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -39,7 +40,7 @@ class LoginSheet extends StatefulWidget {
 }
 
 class _LoginSheetState extends State<LoginSheet> {
-  static bool _rememberMe = false;
+  bool _rememberMe = false;
   bool _isLoading = false;
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -191,7 +192,41 @@ class _LoginSheetState extends State<LoginSheet> {
                         ),
                         Spacer(),
                         TextButton(
-                          onPressed: () => {},
+                          onPressed: () async {
+                            final email = _emailController.text.trim();
+                            if (email.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Enter your email above first, then tap Forgot Password.',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+                            try {
+                              await AuthService.sendPasswordReset(email);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Password reset email sent. Check your inbox.',
+                                    ),
+                                  ),
+                                );
+                              }
+                            } on FirebaseAuthException catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      AuthService.friendlyError(e),
+                                    ),
+                                  ),
+                                );
+                              }
+                            }
+                          },
                           child: Text(
                             'forgot Password?',
                             style: GoogleFonts.inter(
@@ -234,9 +269,37 @@ class _LoginSheetState extends State<LoginSheet> {
                                   _emailController.text.trim(),
                                   _passwordController.text,
                                 );
+                                // Send users with no/incomplete metrics to
+                                // onboarding; otherwise straight to the app.
+                                // On network failure, fall through to /main —
+                                // the home screen handles the missing-target
+                                // state gracefully.
+                                String nextRoute = AppRoutes.mainRoute;
+                                try {
+                                  final metrics =
+                                      await AuthService.fetchBodyMetrics();
+                                  debugPrint(
+                                    '[login] metrics=$metrics needsOnboarding='
+                                    '${AuthService.bodyMetricsNeedOnboarding(metrics)}',
+                                  );
+                                  if (AuthService.bodyMetricsNeedOnboarding(
+                                    metrics,
+                                  )) {
+                                    nextRoute = AppRoutes.onboardRoute;
+                                  }
+                                } catch (e) {
+                                  debugPrint(
+                                    '[login] fetchBodyMetrics failed: $e — '
+                                    'routing to onboarding to be safe',
+                                  );
+                                  // If we can't tell, send the user to
+                                  // onboarding rather than the empty home —
+                                  // they can re-enter and it will be saved.
+                                  nextRoute = AppRoutes.onboardRoute;
+                                }
                                 if (context.mounted) {
                                   Navigator.pop(context);
-                                  Navigator.pushNamed(context, '/main');
+                                  Navigator.pushNamed(context, nextRoute);
                                 }
                               } on FirebaseAuthException catch (e) {
                                 if (context.mounted) {

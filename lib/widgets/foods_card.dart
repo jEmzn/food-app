@@ -1,3 +1,5 @@
+import 'package:app1/models/food.dart';
+import 'package:app1/screens/food_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -6,24 +8,64 @@ class FoodsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return
-    // color: Colors,
-    SingleChildScrollView(
-      padding: EdgeInsets.only(left: 24, top: 15, bottom: 15),
+    // Mock list of recommended foods. Once the backend exposes a
+    // /recommended endpoint we'll fetch real data here.
+    final foods = <Food>[
+      // Numbers are per the listed quantity+unit (e.g. "1 medium apple").
+      Food(
+        name: 'Apple',
+        kcal: 95,
+        carbsG: 25,
+        proteinG: 0.5,
+        fatG: 0.3,
+        quantity: 1,
+        unit: 'medium',
+      ),
+      Food(
+        name: 'Banana',
+        kcal: 105,
+        carbsG: 27,
+        proteinG: 1.3,
+        fatG: 0.4,
+        quantity: 1,
+        unit: 'medium',
+      ),
+      Food(
+        name: 'Orange',
+        kcal: 62,
+        carbsG: 15,
+        proteinG: 1.2,
+        fatG: 0.2,
+        quantity: 1,
+        unit: 'medium',
+      ),
+      Food(
+        name: 'Orange',
+        kcal: 62,
+        carbsG: 15,
+        proteinG: 1.2,
+        fatG: 0.2,
+        quantity: 1,
+        unit: 'medium',
+      ),
+    ];
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(left: 24, top: 15, bottom: 15),
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          buildFoodsCard('assets/images/food_image.png', 'Apple', '95', () {}),
-
-          buildFoodsCard(
-            'assets/images/food_image.png',
-            'Banana',
-            '105',
-            () {},
-          ),
-          // SizedBox(width: 15),
-          buildFoodsCard('assets/images/food_image.png', 'Orange', '62', () {}),
-          buildFoodsCard('assets/images/food_image.png', 'Orange', '62', () {}),
+          for (final food in foods)
+            buildFoodsCard(
+              food.imageUrl,
+              food.name,
+              food.kcal.round().toString(),
+              () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => FoodDetailScreen(food: food),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -36,6 +78,20 @@ Widget buildFoodsCard(
   String kcal,
   VoidCallback onPressed,
 ) {
+  // Pick the right Image widget — assets and network URLs need different ones.
+  final isNetwork =
+      imagePath.startsWith('http://') || imagePath.startsWith('https://');
+  final image = isNetwork
+      ? Image.network(
+          imagePath,
+          height: 220,
+          width: 220,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) =>
+              Image.asset(Food.placeholderImage, height: 220, width: 220),
+        )
+      : Image.asset(imagePath, height: 220, width: 220);
+
   return Container(
     padding: const EdgeInsets.only(left: 10, right: 10),
     decoration: BoxDecoration(
@@ -66,7 +122,6 @@ Widget buildFoodsCard(
           ),
           SizedBox(height: 8),
           Container(
-            // color: Colors.white,
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: Colors.white,
@@ -81,7 +136,7 @@ Widget buildFoodsCard(
             ),
             child: Text('$kcal kcal'),
           ),
-          Image.asset(imagePath, height: 220, width: 220),
+          image,
         ],
       ),
     ),

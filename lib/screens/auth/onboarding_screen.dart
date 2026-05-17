@@ -1,20 +1,11 @@
-import 'package:app1/data/daos/user_doa.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:app1/models/user_profile.dart';
+import 'package:http/http.dart' as http;
+import 'package:app1/config/api_config.dart';
+import 'package:app1/models/body_metrics.dart';
+import 'package:app1/services/auth_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:app1/config/app_theme.dart';
-
-/*
-  Stateful Widget for Onboarding Screen
-  methods to include:
-  - dispose()
-    - Dispose controllers to prevent memory leaks
-  - nextPage()
-    - Navigate to the next page in the PageView
-  - build()
-    - Scaffold with AppBar and PageView
- */
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -26,25 +17,24 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+  bool _isSubmitting = false;
 
-  // Temporary State Viariables
-  Gender? _selectedGender;
-  int? _age;
+  Sex? _selectedSex;
+  DateTime? _selectedDob;
   double? _height;
   double? _weight;
   ActivityLevel? _selectedActivityLevel;
   GoalType? _selectedGoal;
 
-  // Text Editing Controllers
-  final TextEditingController _ageController = TextEditingController();
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
+
+  static const String _baseUrl = ApiConfig.baseUrl;
   static const Color buttonColor = AppTheme.primaryColor;
 
   @override
   void dispose() {
     _pageController.dispose();
-    _ageController.dispose();
     _heightController.dispose();
     _weightController.dispose();
     super.dispose();
@@ -53,19 +43,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void _nextPage() {
     switch (_currentPage) {
       case 0:
-        // get and save measurements
         _height = double.tryParse(_heightController.text);
         _weight = double.tryParse(_weightController.text);
-        _age = int.tryParse(_ageController.text);
 
-        setState(() {
-          _age = _age;
-          _height = _height;
-          _weight = _weight;
-        });
-
-        if (_selectedGender != null &&
-            _age != null &&
+        if (_selectedSex != null &&
+            _selectedDob != null &&
             _height != null &&
             _weight != null) {
           _pageController.nextPage(
@@ -73,18 +55,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             curve: Curves.easeInOut,
           );
         } else {
-          // Show error
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                'Please select gender and enter valid age, height, and weight',
+                'Please select gender, date of birth, height, and weight',
               ),
             ),
           );
         }
         break;
       case 1:
-        // Validate activity level
         if (_selectedActivityLevel != null) {
           _pageController.nextPage(
             duration: const Duration(milliseconds: 300),
@@ -99,7 +79,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         }
         break;
       case 2:
-        // Validate goal type
         if (_selectedGoal != null) {
           _finishOnboarding();
         } else {
@@ -107,45 +86,93 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             const SnackBar(content: Text('Please select goal type to proceed')),
           );
         }
-
       default:
-        setState(() {
-          _currentPage++;
-        });
+        setState(() => _currentPage++);
         break;
     }
   }
 
   void onPageChanged(int index) {
-    setState(() {
-      _currentPage = index;
-    });
+    setState(() => _currentPage = index);
+  }
+
+  Future<void> _pickDob() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDob ?? DateTime(now.year - 25, now.month, now.day),
+      firstDate: DateTime(1900),
+      lastDate: DateTime(now.year - 13, now.month, now.day),
+      helpText: 'Select date of birth',
+    );
+    if (picked != null) {
+      setState(() => _selectedDob = picked);
+    }
   }
 
   Future<void> _finishOnboarding() async {
-    final firebaseUser = FirebaseAuth.instance.currentUser;
-    final profile = UserProfile(
-      id: firebaseUser?.uid ?? '',
-      name: firebaseUser?.displayName ?? '',
-      email: firebaseUser?.email ?? '',
-      password: '',
-      age: _age!,
+    if (_isSubmitting) return;
+
+    final metrics = BodyMetrics(
+      sex: _selectedSex!,
+      dob: _selectedDob,
       heightCm: _height!,
       weightKg: _weight!,
-      gender: _selectedGender!,
       activityLevel: _selectedActivityLevel!,
-      goaltype: _selectedGoal!,
+      goalType: _selectedGoal!,
     );
 
-    await UserDOA().insertUser(profile);
+    setState(() => _isSubmitting = true);
+    try {
+      final token = await AuthService.getToken();
+      final response = await http
+          .post(
+            Uri.parse('$_baseUrl/users/body-metrics'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode(metrics.toMap()),
+          )
+          .timeout(const Duration(seconds: 10));
 
-    if (mounted) {
-      Navigator.pushReplacementNamed(context, '/main');
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Failed to save your information (${response.statusCode}). Please try again.',
+              ),
+            ),
+          );
+          print('Error response: ${response.body}');
+        }
+        return;
+      }
+
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/main');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Could not save your information. Please check your connection and try again.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
   String _formatEnum(String enumString) {
-    return enumString.split('.').last.replaceAll('_', ' ');
+    return enumString.split('.').last.replaceAllMapped(
+          RegExp(r'[A-Z]'),
+          (m) => ' ${m.group(0)}',
+        ).trim();
   }
 
   String _getActivityDescription(ActivityLevel level) {
@@ -180,9 +207,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     duration: const Duration(milliseconds: 300),
                     curve: Curves.easeInOut,
                   );
-                  setState(() {
-                    _currentPage--;
-                  });
                 },
               )
             : null,
@@ -194,12 +218,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
         ),
       ),
-      // body: Center(child: Text('Onboarding Screen')),
       body: Column(
         children: [
           Expanded(
             child: PageView(
               controller: _pageController,
+              physics: const NeverScrollableScrollPhysics(),
               onPageChanged: onPageChanged,
               children: [
                 _buildMeasurementPage(),
@@ -214,7 +238,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               width: double.infinity,
               height: 55,
               child: ElevatedButton(
-                onPressed: _nextPage,
+                onPressed: _isSubmitting ? null : _nextPage,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: buttonColor,
                   foregroundColor: AppTheme.backgroundColor,
@@ -223,7 +247,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ),
                   textStyle: GoogleFonts.inter(fontSize: 16),
                 ),
-                child: Text(_currentPage < 2 ? 'Next' : 'Finish'),
+                child: _isSubmitting
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(_currentPage < 2 ? 'Next' : 'Finish'),
               ),
             ),
           ),
@@ -234,23 +267,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Widget _buildMeasurementPage() {
     return Padding(
-      padding: EdgeInsets.all(24),
+      padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Tell us about yourself',
-            style: GoogleFonts.poppins(
-              fontSize: 24,
-              fontWeight: FontWeight.w600,
-            ),
+            style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.w600),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
             'This information will help us personalize your experience',
             style: GoogleFonts.inter(fontSize: 16, color: Colors.grey[600]),
           ),
-          SizedBox(height: 24),
+          const SizedBox(height: 24),
           _buildTextField(
             'Height (cm)',
             'Enter your height',
@@ -258,7 +288,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             _heightController,
             TextInputType.number,
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           _buildTextField(
             'Weight (kg)',
             'Enter your weight',
@@ -266,39 +296,147 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             _weightController,
             TextInputType.number,
           ),
-          SizedBox(height: 16),
-          _ageAndGenderCard(),
+          const SizedBox(height: 16),
+          _buildDobAndGenderRow(),
         ],
       ),
     );
   }
 
+  Widget _buildDobAndGenderRow() {
+    final dobLabel = _selectedDob != null
+        ? '${_selectedDob!.day.toString().padLeft(2, '0')}/'
+            '${_selectedDob!.month.toString().padLeft(2, '0')}/'
+            '${_selectedDob!.year}'
+        : 'Select date';
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Date of Birth',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: _pickDob,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey[400]!),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.calendar_today, size: 18, color: Colors.grey),
+                      const SizedBox(width: 8),
+                      Text(
+                        dobLabel,
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          color: _selectedDob != null
+                              ? Colors.black
+                              : Colors.grey[500],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 16),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Sex',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _selectedSex == Sex.male
+                        ? Colors.blue[400]
+                        : Colors.white,
+                    foregroundColor: _selectedSex == Sex.male
+                        ? Colors.white
+                        : Colors.grey,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        bottomLeft: Radius.circular(16),
+                      ),
+                    ),
+                  ),
+                  onPressed: () => setState(() => _selectedSex = Sex.male),
+                  child: const Icon(Icons.male_outlined, size: 24),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _selectedSex == Sex.female
+                        ? Colors.pink[400]
+                        : Colors.white,
+                    foregroundColor: _selectedSex == Sex.female
+                        ? Colors.white
+                        : Colors.grey,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.only(
+                        topRight: Radius.circular(16),
+                        bottomRight: Radius.circular(16),
+                      ),
+                    ),
+                  ),
+                  onPressed: () => setState(() => _selectedSex = Sex.female),
+                  child: const Icon(Icons.female_outlined, size: 24),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   Widget _buildActivityLevelPage() {
     return Padding(
-      padding: EdgeInsets.all(24),
+      padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Activity Level',
-            style: GoogleFonts.poppins(
-              fontSize: 24,
-              fontWeight: FontWeight.w600,
-            ),
+            style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.w600),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
             'How active are you on a daily basis?',
             style: GoogleFonts.inter(fontSize: 16, color: Colors.grey[600]),
           ),
-          SizedBox(height: 24),
-          ...ActivityLevel.values.map(
+          const SizedBox(height: 24),
+          ...ActivityLevel.values.where((l) => l != ActivityLevel.unknown).map(
             (level) => Padding(
-              padding: EdgeInsetsGeometry.only(bottom: 12),
+              padding: const EdgeInsets.only(bottom: 12),
               child: GestureDetector(
-                onTap: () => setState(() {
-                  _selectedActivityLevel = level;
-                }),
+                onTap: () => setState(() => _selectedActivityLevel = level),
                 child: Container(
                   decoration: BoxDecoration(
                     color: _selectedActivityLevel == level
@@ -312,7 +450,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.all(8.0),
+                    padding: const EdgeInsets.all(12),
                     child: Row(
                       children: [
                         Expanded(
@@ -343,8 +481,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           ),
                         ),
                         if (_selectedActivityLevel == level)
-                          Padding(
-                            padding: const EdgeInsets.only(right: 12),
+                          const Padding(
+                            padding: EdgeInsets.only(right: 4),
                             child: Icon(
                               Icons.check_circle,
                               color: AppTheme.backgroundColor,
@@ -364,33 +502,31 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Widget _buildGoalTypePage() {
     return Padding(
-      padding: EdgeInsets.all(24),
+      padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'Your Goal',
-            style: GoogleFonts.poppins(
-              fontSize: 24,
-              fontWeight: FontWeight.w600,
-            ),
+            style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.w600),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
-            'What so you want to achieve?',
+            'What do you want to achieve?',
             style: GoogleFonts.inter(fontSize: 16, color: Colors.grey[600]),
           ),
-          SizedBox(height: 24),
+          const SizedBox(height: 24),
           Expanded(
             child: ListView(
               children: GoalType.values
+                  .where((g) => g != GoalType.unknown)
                   .map(
                     (goal) => Padding(
-                      padding: EdgeInsetsGeometry.only(bottom: 12),
+                      padding: const EdgeInsets.only(bottom: 12),
                       child: GestureDetector(
                         onTap: () => setState(() => _selectedGoal = goal),
                         child: Container(
-                          padding: EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: _selectedGoal == goal
                                 ? buttonColor
@@ -439,7 +575,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           label,
           style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w500),
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         TextField(
           controller: controller,
           keyboardType: inputType,
@@ -448,119 +584,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             suffixText: suffix,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _ageAndGenderCard() {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Age',
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              SizedBox(height: 8),
-              TextField(
-                controller: _ageController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  hintText: 'Enter your age',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                onChanged: (value) {
-                  setState(() {
-                    _age = int.tryParse(value);
-                  });
-                },
-              ),
-            ],
-          ),
-        ),
-        SizedBox(width: 16),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Gender',
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            SizedBox(height: 8),
-            Container(
-              decoration: BoxDecoration(
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey[100]!,
-                    // spreadRadius: 1,
-                    blurRadius: 5,
-                    offset: Offset(0, 0),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _selectedGender == Gender.male
-                          ? Colors.blue[400]
-                          : Colors.white,
-                      foregroundColor: _selectedGender == Gender.male
-                          ? Colors.white
-                          : Colors.grey,
-                      padding: EdgeInsets.only(top: 15, bottom: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(16),
-                          bottomLeft: Radius.circular(16),
-                        ),
-                      ),
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _selectedGender = Gender.male;
-                      });
-                    },
-                    child: Icon(Icons.male_outlined, size: 24),
-                  ),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _selectedGender == Gender.female
-                          ? Colors.pink[400]
-                          : Colors.white,
-                      foregroundColor: _selectedGender == Gender.female
-                          ? Colors.white
-                          : Colors.grey,
-                      padding: EdgeInsets.only(top: 15, bottom: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.only(
-                          topRight: Radius.circular(16),
-                          bottomRight: Radius.circular(16),
-                        ),
-                      ),
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _selectedGender = Gender.female;
-                      });
-                    },
-                    child: Icon(Icons.female_outlined, size: 24),
-                  ),
-                ],
-              ),
-            ),
-          ],
         ),
       ],
     );

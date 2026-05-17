@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:app1/screens/auth/login_sheet.dart';
+import 'package:app1/config/app_theme.dart';
 
 const Color fade1 = Colors.white;
 final Color fade2 = fade1.withValues(alpha: 0.63);
 final Color fade3 = fade1.withValues(alpha: 0);
-const Color buttonColor = Color(0xFF73CA31);
+const Color buttonColor = AppTheme.primaryColor;
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});

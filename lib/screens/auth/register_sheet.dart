@@ -38,7 +38,7 @@ class RegisterSheet extends StatefulWidget {
 }
 
 class _RegisterSheetState extends State<RegisterSheet> {
-  static bool _rememberMe = false;
+  bool _rememberMe = false;
   static const Color primaryColor = Color(0xFF73CA31);
   bool _isLoading = false;
   final _nameController = TextEditingController();
@@ -283,6 +283,16 @@ class _RegisterSheetState extends State<RegisterSheet> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text('Passwords do not match'),
+                            ),
+                          );
+                          return;
+                        }
+                        if (!_rememberMe) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Please agree to the Terms and Conditions to continue',
+                              ),
                             ),
                           );
                           return;
