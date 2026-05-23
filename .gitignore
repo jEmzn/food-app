@@ -45,7 +45,6 @@ app.*.map.json
 /android/app/release
 
 CLAUDE.md
-README.md
 TODO.md
 APISERVER.md
 
