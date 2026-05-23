@@ -12,6 +12,10 @@ class Food {
   /// Local asset used when the backend has no image for a food yet.
   static const String placeholderImage = 'assets/images/food_image.png';
 
+  /// The `food_catalog` primary key. Always present because every search
+  /// inserts into `food_catalog` first and returns the persisted row.
+  final String id;
+
   final String name;
 
   /// Network URL or asset path. Never null — defaults to [placeholderImage].
@@ -34,6 +38,7 @@ class Food {
   final String unit;
 
   Food({
+    required this.id,
     required this.name,
     this.imageUrl = placeholderImage,
     this.kcal = 0,
@@ -52,36 +57,10 @@ class Food {
   /// run every numeric field through [_parseDouble] rather than casting.
   /// `image_url` may be null in the response — fall back to [placeholderImage]
   /// so the UI never has to handle nulls.
-  /// Builds the per-item JSON map that POST /meals expects.
-  ///
-  /// The detail screen scales kcal/macros based on the user-chosen serving,
-  /// so we let callers override the numeric fields. When omitted, the food's
-  /// default values are used. `foodCatalogId` is optional because some foods
-  /// (e.g. AI-generated suggestions not yet in the catalog) won't have one.
-  Map<String, dynamic> toMealItemJson({
-    int? foodCatalogId,
-    double? quantity,
-    double? calories,
-    double? carbsG,
-    double? proteinG,
-    double? fatG,
-  }) {
-    return {
-      'foodCatalogId': foodCatalogId,
-      'foodName': name,
-      'imageUrl': imageUrl,
-      'quantity': quantity ?? this.quantity,
-      'unit': unit,
-      'calories': calories ?? kcal,
-      'protein_g': proteinG ?? this.proteinG,
-      'carbs_g': carbsG ?? this.carbsG,
-      'fat_g': fatG ?? this.fatG,
-    };
-  }
-
   factory Food.fromCatalogJson(Map<String, dynamic> json) {
     final rawImage = json['image_url'];
     return Food(
+      id: (json['id'] ?? '').toString(),
       name: (json['food_name'] ?? '').toString(),
       imageUrl: (rawImage is String && rawImage.isNotEmpty)
           ? rawImage

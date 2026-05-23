@@ -71,15 +71,25 @@ WelcomeScreen (/)
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid | PK |
-| food_id | text | external source ID |
-| source_type | text | data source identifier |
-| food_name | text | |
+| source_type | text | not null — data source identifier (e.g. `ai_generated`) |
+| food_name | text | not null |
 | image_url | text | |
 | quantity / unit | numeric / text | serving size |
-| calories | numeric | |
-| protein_g / carbs_g / fat_g | numeric | macronutrients |
-| raw_payload | jsonb | original API response |
-| created_at / updated_at | timestamp | |
+| calories | numeric | per serving |
+| protein_g / carbs_g / fat_g | numeric | macronutrients (g) |
+| food_type | food_type_enum | category enum (values defined in DB) |
+| created_at / updated_at | timestamp | not null |
+| **Micronutrients** | | all optional, per serving |
+| dietary_fb_g | numeric | dietary fiber (g) |
+| ash_g | numeric | ash (g) |
+| calcium_mg / phosphorus_mg / magnesium_mg | numeric | minerals (mg) |
+| sodium_mg / potassium_mg | numeric | minerals (mg) |
+| iron_mg / copper_mg / zinc_mg | numeric | trace minerals (mg) |
+| iodine_ug | numeric | iodine (µg) |
+| betacarotene_ug / retinol_ug / v_a_ug | numeric | vitamin A group (µg) |
+| thiamin_mg / riboflavin_mg / niacin_mg | numeric | B vitamins (mg) |
+| v_c_mg | numeric | vitamin C (mg) |
+| v_e_mg | numeric | vitamin E (mg) |
 
 ### `meals`
 | Column | Type | Notes |

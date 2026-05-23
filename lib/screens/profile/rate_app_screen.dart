@@ -26,17 +26,17 @@ class _RateAppScreenState extends State<RateAppScreen> {
   void _submit() {
     if (_stars == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please pick a star rating first')),
+        const SnackBar(content: Text('กรุณาเลือกคะแนนดาวก่อน')),
       );
       return;
     }
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Thanks for rating!'),
+        title: const Text('ขอบคุณสำหรับการให้คะแนน!'),
         content: Text(
-          'You gave $_stars / 5. Your feedback helps us improve.',
-          style: GoogleFonts.inter(),
+          'คุณให้ $_stars / 5 คะแนน ความคิดเห็นของคุณช่วยให้เราพัฒนาให้ดีขึ้น',
+          style: GoogleFonts.mali(),
         ),
         actions: [
           TextButton(
@@ -44,7 +44,7 @@ class _RateAppScreenState extends State<RateAppScreen> {
               Navigator.pop(ctx);
               Navigator.pop(context);
             },
-            child: const Text('OK'),
+            child: const Text('ตกลง'),
           ),
         ],
       ),
@@ -56,7 +56,7 @@ class _RateAppScreenState extends State<RateAppScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: Text('Rate the App', style: GoogleFonts.poppins()),
+        title: Text('ให้คะแนนแอป', style: GoogleFonts.mali()),
         backgroundColor: AppTheme.backgroundColor,
         elevation: 0,
         foregroundColor: Colors.black,
@@ -67,14 +67,14 @@ class _RateAppScreenState extends State<RateAppScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 20),
-            Text('Enjoying the app?',
+            Text('ชอบแอปนี้ไหม?',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.mali(
                     fontSize: 22, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
-            Text('Tap a star to leave a rating.',
+            Text('แตะดาวเพื่อให้คะแนน',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.inter(color: Colors.grey[700])),
+                style: GoogleFonts.mali(color: Colors.grey[700])),
             const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -95,12 +95,12 @@ class _RateAppScreenState extends State<RateAppScreen> {
               controller: _comment,
               maxLines: 4,
               decoration: const InputDecoration(
-                labelText: 'Tell us more (optional)',
+                labelText: 'บอกเราเพิ่มเติม (ไม่บังคับ)',
                 border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 24),
-            ElevatedButton(onPressed: _submit, child: const Text('Submit')),
+            ElevatedButton(onPressed: _submit, child: const Text('ส่ง')),
           ],
         ),
       ),

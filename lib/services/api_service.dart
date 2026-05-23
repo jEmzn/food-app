@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:app1/config/api_config.dart';
 import 'package:app1/models/food.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -56,25 +58,31 @@ class FoodApiService {
       throw RecipeApiException(401, 'กรุณาเข้าสู่ระบบใหม่');
     }
 
-    // First attempt: use whatever token Firebase has cached (fast path).
-    var token = await user.getIdToken();
-    var response = await http.get(
-      uri,
-      headers: {'Authorization': 'Bearer $token'},
-    );
-
-    // Retry once with a freshly-minted token if the server rejected ours.
-    if (response.statusCode == 401) {
-      token = await user.getIdToken(true); // force-refresh
-      response = await http.get(
+    try {
+      // First attempt: use whatever token Firebase has cached (fast path).
+      var token = await user.getIdToken();
+      var response = await http.get(
         uri,
         headers: {'Authorization': 'Bearer $token'},
-      );
+      ).timeout(const Duration(seconds: 10));
+
+      // Retry once with a freshly-minted token if the server rejected ours.
       if (response.statusCode == 401) {
-        throw RecipeApiException(401, 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
+        token = await user.getIdToken(true); // force-refresh
+        response = await http.get(
+          uri,
+          headers: {'Authorization': 'Bearer $token'},
+        ).timeout(const Duration(seconds: 10));
+        if (response.statusCode == 401) {
+          throw RecipeApiException(401, 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
+        }
       }
+      return response;
+    } on TimeoutException {
+      throw RecipeApiException(408, 'เซิร์ฟเวอร์ตอบสนองช้า ลองใหม่อีกครั้ง');
+    } on SocketException {
+      throw RecipeApiException(503, 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้');
     }
-    return response;
   }
 
   /// `GET /recipes/suggest?query=<text>`

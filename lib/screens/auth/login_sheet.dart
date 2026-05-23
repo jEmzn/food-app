@@ -80,18 +80,18 @@ class _LoginSheetState extends State<LoginSheet> {
                     Image.asset('assets/login_logo.png', height: 120),
                     SizedBox(height: 20),
                     Text(
-                      'Welcome to FoodApp',
+                      'ยินดีต้อนรับสู่ FoodApp',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.mali(
                         fontSize: 20,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     SizedBox(height: 5),
                     Text(
-                      'Discover delicious meals and manage your orders with ease.',
+                      'ค้นพบมื้ออาหารแสนอร่อยและจัดการคำสั่งซื้อของคุณได้อย่างง่ายดาย',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.mali(
                         fontSize: 14,
                         fontWeight: FontWeight.w400,
                         color: Colors.grey[600],
@@ -99,8 +99,8 @@ class _LoginSheetState extends State<LoginSheet> {
                     ),
                     SizedBox(height: 20),
                     Text(
-                      'Email',
-                      style: GoogleFonts.inter(
+                      'อีเมล',
+                      style: GoogleFonts.mali(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
@@ -110,8 +110,8 @@ class _LoginSheetState extends State<LoginSheet> {
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       decoration: InputDecoration(
-                        hintText: 'Enter your Email',
-                        hintStyle: GoogleFonts.inter(
+                        hintText: 'กรอกอีเมลของคุณ',
+                        hintStyle: GoogleFonts.mali(
                           fontSize: 14,
                           fontWeight: FontWeight.w400,
                           color: Colors.grey[600],
@@ -132,8 +132,8 @@ class _LoginSheetState extends State<LoginSheet> {
                     ),
                     SizedBox(height: 16),
                     Text(
-                      'Password',
-                      style: GoogleFonts.inter(
+                      'รหัสผ่าน',
+                      style: GoogleFonts.mali(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
@@ -143,8 +143,8 @@ class _LoginSheetState extends State<LoginSheet> {
                       controller: _passwordController,
                       obscureText: true,
                       decoration: InputDecoration(
-                        hintText: 'Enter your Password',
-                        hintStyle: GoogleFonts.inter(
+                        hintText: 'กรอกรหัสผ่านของคุณ',
+                        hintStyle: GoogleFonts.mali(
                           fontSize: 14,
                           fontWeight: FontWeight.w400,
                           color: Colors.grey[600],
@@ -183,8 +183,8 @@ class _LoginSheetState extends State<LoginSheet> {
                           },
                         ),
                         Text(
-                          'Remember Me',
-                          style: GoogleFonts.inter(
+                          'จดจำฉัน',
+                          style: GoogleFonts.mali(
                             fontSize: 12,
                             fontWeight: FontWeight.w400,
                             color: Colors.grey[600],
@@ -198,7 +198,7 @@ class _LoginSheetState extends State<LoginSheet> {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text(
-                                    'Enter your email above first, then tap Forgot Password.',
+                                    'กรุณากรอกอีเมลด้านบนก่อน แล้วจึงแตะลืมรหัสผ่าน',
                                   ),
                                 ),
                               );
@@ -210,7 +210,7 @@ class _LoginSheetState extends State<LoginSheet> {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text(
-                                      'Password reset email sent. Check your inbox.',
+                                      'ส่งอีเมลรีเซ็ตรหัสผ่านแล้ว กรุณาตรวจสอบกล่องจดหมายของคุณ',
                                     ),
                                   ),
                                 );
@@ -228,8 +228,8 @@ class _LoginSheetState extends State<LoginSheet> {
                             }
                           },
                           child: Text(
-                            'forgot Password?',
-                            style: GoogleFonts.inter(
+                            'ลืมรหัสผ่าน?',
+                            style: GoogleFonts.mali(
                               fontSize: 12,
                               fontWeight: FontWeight.w400,
                               color: AppTheme.primaryColor,
@@ -246,7 +246,7 @@ class _LoginSheetState extends State<LoginSheet> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30),
                         ),
-                        textStyle: GoogleFonts.inter(fontSize: 16),
+                        textStyle: GoogleFonts.mali(fontSize: 16),
                         minimumSize: Size(double.infinity, 50),
                       ),
                       onPressed: _isLoading
@@ -257,7 +257,7 @@ class _LoginSheetState extends State<LoginSheet> {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text(
-                                      'Please enter your email and password',
+                                      'กรุณากรอกอีเมลและรหัสผ่าน',
                                     ),
                                   ),
                                 );
@@ -336,7 +336,7 @@ class _LoginSheetState extends State<LoginSheet> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Text('Login'),
+                          : const Text('เข้าสู่ระบบ'),
                     ),
                     SizedBox(height: 32),
                     Row(
@@ -347,9 +347,9 @@ class _LoginSheetState extends State<LoginSheet> {
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 8),
                           child: (Text(
-                            'Or continue with',
+                            'หรือดำเนินการต่อด้วย',
                             textAlign: TextAlign.center,
-                            style: GoogleFonts.inter(
+                            style: GoogleFonts.mali(
                               fontSize: 12,
                               color: Colors.grey[600],
                             ),
@@ -398,8 +398,8 @@ class _LoginSheetState extends State<LoginSheet> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'Don\'t have an account?',
-                      style: GoogleFonts.inter(
+                      'ยังไม่มีบัญชี?',
+                      style: GoogleFonts.mali(
                         fontSize: 12,
                         color: Colors.grey[600],
                       ),
@@ -416,8 +416,8 @@ class _LoginSheetState extends State<LoginSheet> {
                         ),
                       },
                       child: Text(
-                        'Sign up',
-                        style: GoogleFonts.inter(
+                        'สมัครสมาชิก',
+                        style: GoogleFonts.mali(
                           fontSize: 12,
                           color: AppTheme.primaryColor,
                         ),

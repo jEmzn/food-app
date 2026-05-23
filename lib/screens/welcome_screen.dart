@@ -58,8 +58,8 @@ class BottomCardLogin extends StatelessWidget {
         children: [
           SizedBox(height: 60),
           Text(
-            'Eat Well.\nLive Better',
-            style: GoogleFonts.poppins(
+            'กินดี\nอยู่ดี',
+            style: GoogleFonts.mali(
               fontSize: 36,
               fontWeight: FontWeight.w700,
             ),
@@ -67,8 +67,8 @@ class BottomCardLogin extends StatelessWidget {
           ),
           SizedBox(height: 15),
           Text(
-            'Discover the power of whole foods with a nutrition guide that fits your lifestyle, not just a diet.',
-            style: GoogleFonts.inter(),
+            'ค้นพบพลังของอาหารธรรมชาติ พร้อมคู่มือโภชนาการที่เข้ากับไลฟ์สไตล์ของคุณ ไม่ใช่แค่การลดน้ำหนัก',
+            style: GoogleFonts.mali(),
             textAlign: TextAlign.center,
           ),
           SizedBox(height: 32),
@@ -90,7 +90,7 @@ class BottomCardLogin extends StatelessWidget {
                 builder: (context) => const LoginSheet(),
               ),
             },
-            child: Text('Get Started'),
+            child: Text('เริ่มต้นใช้งาน'),
           ),
           SizedBox(height: 50),
         ],

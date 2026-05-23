@@ -143,3 +143,57 @@ enum ActivityLevel {
 }
 
 enum GoalType { unknown, loseWeight, maintainWeight, gainMuscle }
+
+// ---- Thai display labels ----------------------------------------------------
+//
+// IMPORTANT: these are for SHOWING the value on screen only. The raw enum
+// `.name` (e.g. "sedentary", "loseWeight") is still what gets sent to and
+// parsed from the backend in toMap()/fromMap(). Never swap the backend code
+// to use these labels, or the API calls will break.
+
+extension SexLabel on Sex {
+  String get label {
+    switch (this) {
+      case Sex.male:
+        return 'ชาย';
+      case Sex.female:
+        return 'หญิง';
+      case Sex.unknown:
+        return 'ไม่ระบุ';
+    }
+  }
+}
+
+extension ActivityLevelLabel on ActivityLevel {
+  String get label {
+    switch (this) {
+      case ActivityLevel.sedentary:
+        return 'ไม่ค่อยเคลื่อนไหว';
+      case ActivityLevel.lightlyActive:
+        return 'เคลื่อนไหวเล็กน้อย';
+      case ActivityLevel.moderatelyActive:
+        return 'เคลื่อนไหวปานกลาง';
+      case ActivityLevel.veryActive:
+        return 'เคลื่อนไหวมาก';
+      case ActivityLevel.extremelyActive:
+        return 'เคลื่อนไหวมากที่สุด';
+      case ActivityLevel.unknown:
+        return 'ไม่ระบุ';
+    }
+  }
+}
+
+extension GoalTypeLabel on GoalType {
+  String get label {
+    switch (this) {
+      case GoalType.loseWeight:
+        return 'ลดน้ำหนัก';
+      case GoalType.maintainWeight:
+        return 'รักษาน้ำหนัก';
+      case GoalType.gainMuscle:
+        return 'เพิ่มกล้ามเนื้อ';
+      case GoalType.unknown:
+        return 'ไม่ระบุ';
+    }
+  }
+}

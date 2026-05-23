@@ -14,38 +14,38 @@ class HelpSupportScreen extends StatelessWidget {
 
   static const List<_Faq> _faqs = [
     _Faq(
-      q: 'How do I log a meal?',
-      a: 'On the home screen, search a food and tap the + icon to add it to '
-          'today\'s log. You can change the meal type (breakfast/lunch/dinner) '
-          'before saving.',
+      q: 'ฉันจะบันทึกมื้ออาหารได้อย่างไร?',
+      a: 'ที่หน้าแรก ให้ค้นหาอาหารแล้วแตะไอคอน + เพื่อเพิ่มลงในบันทึกของวันนี้ '
+          'คุณสามารถเปลี่ยนประเภทมื้ออาหาร (มื้อเช้า/มื้อกลางวัน/มื้อเย็น) '
+          'ได้ก่อนบันทึก',
     ),
     _Faq(
-      q: 'How are calories calculated?',
-      a: 'For each food we look up nutrition from our catalog. If the food '
-          'isn\'t cached, our AI estimates it on first lookup and caches the '
-          'result for next time.',
+      q: 'แคลอรีคำนวณอย่างไร?',
+      a: 'สำหรับอาหารแต่ละชนิด เราจะค้นหาข้อมูลโภชนาการจากแคตตาล็อกของเรา '
+          'หากยังไม่มีในแคช AI ของเราจะประเมินค่าในครั้งแรกที่ค้นหา '
+          'แล้วเก็บผลลัพธ์ไว้ใช้ในครั้งต่อไป',
     ),
     _Faq(
-      q: 'Why do my body metrics keep coming back?',
-      a: 'The app stores body metrics on our server. Edits create a new record '
-          '— the latest one is always shown. Older records are kept for history.',
+      q: 'ทำไมข้อมูลร่างกายของฉันถึงกลับมาแสดงอีก?',
+      a: 'แอปจะเก็บข้อมูลร่างกายไว้บนเซิร์ฟเวอร์ของเรา การแก้ไขจะสร้างรายการใหม่ '
+          '— ระบบจะแสดงรายการล่าสุดเสมอ ส่วนรายการเก่าจะถูกเก็บไว้เป็นประวัติ',
     ),
     _Faq(
-      q: 'How do I reset my password?',
-      a: 'On the login screen, tap "Forgot password" and enter your email. '
-          'You\'ll get a reset link from Firebase.',
+      q: 'ฉันจะรีเซ็ตรหัสผ่านได้อย่างไร?',
+      a: 'ที่หน้าเข้าสู่ระบบ ให้แตะ "ลืมรหัสผ่าน" แล้วกรอกอีเมลของคุณ '
+          'คุณจะได้รับลิงก์รีเซ็ตจาก Firebase',
     ),
     _Faq(
-      q: 'Is my data private?',
-      a: 'Your account is authenticated by Firebase. Body metrics and meals '
-          'are linked to your user ID and only visible to you.',
+      q: 'ข้อมูลของฉันเป็นส่วนตัวหรือไม่?',
+      a: 'บัญชีของคุณได้รับการยืนยันตัวตนโดย Firebase ข้อมูลร่างกายและมื้ออาหาร '
+          'จะเชื่อมโยงกับรหัสผู้ใช้ของคุณ และมองเห็นได้เฉพาะคุณเท่านั้น',
     ),
   ];
 
   void _copyEmail(BuildContext context) {
     Clipboard.setData(const ClipboardData(text: _supportEmail));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Email copied to clipboard')),
+      const SnackBar(content: Text('คัดลอกอีเมลไปยังคลิปบอร์ดแล้ว')),
     );
   }
 
@@ -54,7 +54,7 @@ class HelpSupportScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: Text('Help & Support', style: GoogleFonts.poppins()),
+        title: Text('ช่วยเหลือและสนับสนุน', style: GoogleFonts.mali()),
         backgroundColor: AppTheme.backgroundColor,
         elevation: 0,
         foregroundColor: Colors.black,
@@ -62,8 +62,8 @@ class HelpSupportScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text('Frequently asked questions',
-              style: GoogleFonts.poppins(
+          Text('คำถามที่พบบ่อย',
+              style: GoogleFonts.mali(
                   fontSize: 18, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           Card(
@@ -73,7 +73,7 @@ class HelpSupportScreen extends StatelessWidget {
               children: _faqs
                   .map((f) => ExpansionTile(
                         title: Text(f.q,
-                            style: GoogleFonts.inter(
+                            style: GoogleFonts.mali(
                                 fontWeight: FontWeight.w500)),
                         childrenPadding:
                             const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -81,7 +81,7 @@ class HelpSupportScreen extends StatelessWidget {
                           Align(
                             alignment: Alignment.centerLeft,
                             child: Text(f.a,
-                                style: GoogleFonts.inter(color: Colors.grey[800])),
+                                style: GoogleFonts.mali(color: Colors.grey[800])),
                           ),
                         ],
                       ))
@@ -89,8 +89,8 @@ class HelpSupportScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          Text('Still need help?',
-              style: GoogleFonts.poppins(
+          Text('ยังต้องการความช่วยเหลือ?',
+              style: GoogleFonts.mali(
                   fontSize: 18, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           Card(
@@ -98,7 +98,7 @@ class HelpSupportScreen extends StatelessWidget {
             elevation: 0,
             child: ListTile(
               leading: const Icon(Icons.mail_outline),
-              title: const Text('Email support'),
+              title: const Text('อีเมลฝ่ายสนับสนุน'),
               subtitle: const Text(_supportEmail),
               trailing: const Icon(Icons.copy),
               onTap: () => _copyEmail(context),

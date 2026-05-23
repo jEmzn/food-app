@@ -20,7 +20,7 @@ class FavoriteScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SizedBox(height: 20),
-            TopLabel(textLabel: 'Favorite Foods'),
+            TopLabel(textLabel: 'อาหารโปรด'),
             SizedBox(height: 18),
             CategoriesBar(),
             SizedBox(height: 24),
@@ -33,38 +33,38 @@ class FavoriteScreen extends StatelessWidget {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               children: [
-                _buildFavoriteItem('assets/images/food_image.png', 'Salad'),
+                _buildFavoriteItem('assets/images/food_image.png', 'สลัด'),
                 _buildFavoriteItem(
                   'assets/images/food_image.png',
-                  'Berry Bowl',
+                  'โบว์ลเบอร์รี',
                 ),
                 _buildFavoriteItem(
                   'assets/images/food_image.png',
-                  'Berry Bowl',
+                  'โบว์ลเบอร์รี',
                 ),
                 _buildFavoriteItem(
                   'assets/images/food_image.png',
-                  'Berry Bowl',
+                  'โบว์ลเบอร์รี',
                 ),
                 _buildFavoriteItem(
                   'assets/images/food_image.png',
-                  'Berry Bowl',
+                  'โบว์ลเบอร์รี',
                 ),
                 _buildFavoriteItem(
                   'assets/images/food_image.png',
-                  'Quinoa Salad',
+                  'สลัดควินัว',
                 ),
                 _buildFavoriteItem(
                   'assets/images/food_image.png',
-                  'Grilled Chicken',
+                  'ไก่ย่าง',
                 ),
                 _buildFavoriteItem(
                   'assets/images/food_image.png',
-                  'Grilled Chicken',
+                  'ไก่ย่าง',
                 ),
                 _buildFavoriteItem(
                   'assets/images/food_image.png',
-                  'Grilled Chicken',
+                  'ไก่ย่าง',
                 ),
               ],
             ),
@@ -115,7 +115,7 @@ class FavoriteScreen extends StatelessWidget {
                         Text(
                           overflow: TextOverflow.ellipsis,
                           title,
-                          style: GoogleFonts.inter(
+                          style: GoogleFonts.mali(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                             color: Colors.white,
@@ -123,7 +123,7 @@ class FavoriteScreen extends StatelessWidget {
                         ),
                         Text(
                           '160 kcal',
-                          style: GoogleFonts.inter(
+                          style: GoogleFonts.mali(
                             fontSize: 14,
                             fontWeight: FontWeight.w400,
                             color: Colors.grey,
@@ -143,7 +143,7 @@ class FavoriteScreen extends StatelessWidget {
                     ),
                     child: Text(
                       '+',
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.mali(
                         fontSize: 24,
                         fontWeight: FontWeight.w400,
                         color: const Color.fromARGB(255, 50, 55, 34),

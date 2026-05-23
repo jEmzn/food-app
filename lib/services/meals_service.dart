@@ -19,26 +19,70 @@ class MealsService {
   ) async {
     final token = await AuthService.getToken();
     final iso = _isoDate(date);
-    final response = await http
-        .get(
-          Uri.parse('$_baseUrl/meals/$iso'),
-          headers: {'Authorization': 'Bearer $token'},
-        )
-        .timeout(const Duration(seconds: 10));
+    final http.Response response;
+    try {
+      response = await http
+          .get(
+            Uri.parse('$_baseUrl/meals/$iso'),
+            headers: {'Authorization': 'Bearer $token'},
+          )
+          .timeout(const Duration(seconds: 10));
+    } on TimeoutException {
+      throw Exception('เซิร์ฟเวอร์ตอบสนองช้า กรุณาลองใหม่อีกครั้ง');
+    } on SocketException {
+      throw Exception('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้');
+    }
 
     if (response.statusCode != 200) {
       throw Exception(
-        'Failed to load meals (${response.statusCode}): ${response.body}',
+        'โหลดมื้ออาหารไม่สำเร็จ (${response.statusCode}): ${response.body}',
       );
     }
     if (response.body.isEmpty) return [];
     final decoded = jsonDecode(response.body);
     if (decoded is! List) return [];
-    // Normalise each entry to a Map<String, dynamic> for safer access in UI.
-    return decoded
-        .whereType<Map>()
-        .map((e) => e.map((k, v) => MapEntry(k.toString(), v)))
-        .toList();
+
+    // Backend returns a FLAT list — each row is a join of `meals` × `meal_items`,
+    // so the same meal_id can appear multiple times (once per food item).
+    // The History UI expects one entry per meal with an `items` list, so we
+    // group the rows by meal_id here.
+    final Map<String, Map<String, dynamic>> byMealId = {};
+    for (final raw in decoded) {
+      if (raw is! Map) continue;
+      final row = raw.map((k, v) => MapEntry(k.toString(), v));
+      final mealId = row['meal_id']?.toString();
+      if (mealId == null) continue;
+
+      // Build the item portion (the per-food fields from meal_items).
+      final item = <String, dynamic>{
+        'meal_item_id': row['meal_item_id'],
+        'food_catalog_id': row['food_catalog_id'],
+        'food_name': row['food_name'],
+        'image_url': row['image_url'],
+        'quantity': row['quantity'],
+        'unit': row['unit'],
+        'calories': row['calories'],
+        'protein_g': row['protein_g'],
+        'carbs_g': row['carbs_g'],
+        'fat_g': row['fat_g'],
+      };
+
+      final existing = byMealId[mealId];
+      if (existing == null) {
+        byMealId[mealId] = {
+          'meal_id': mealId,
+          'id': mealId, // some UIs read either key
+          'user_id': row['user_id'],
+          'date': row['date'],
+          'meal_type': row['meal_type'],
+          'meal_created_at': row['meal_created_at'],
+          'items': [item],
+        };
+      } else {
+        (existing['items'] as List).add(item);
+      }
+    }
+    return byMealId.values.toList();
   }
 
   /// POST /meals — log a meal with one or more food items for the given date.
@@ -52,15 +96,33 @@ class MealsService {
   static Future<void> addMeal({
     required DateTime date,
     required String mealType,
-    required List<Map<String, dynamic>> mealItems,
+    // required List<Map<String, dynamic>> mealItems,
+    required String foodCatalogId,
+    required String foodName,
+    required String imageUrl,
+    required double quantity,
+    required String unit,
+    required double calories,
+    required double proteinG,
+    required double carbsG,
+    required double fatG,
   }) async {
     final token = await AuthService.getToken();
     final body = jsonEncode({
       'date': _isoDate(date),
-      'meal_type': mealType,
-      'mealItems': mealItems,
+      'mealType': mealType,
+      'foodCatalogId': foodCatalogId,
+      'foodName': foodName,
+      'imageUrl': imageUrl,
+      'quantity': quantity,
+      'unit': unit,
+      'calories': calories,
+      'proteinG': proteinG,
+      'carbsG': carbsG,
+      'fatG': fatG,
     });
     try {
+      print('Adding meal with body: $body'); // Debug log 
       final response = await http
           .post(
             Uri.parse('$_baseUrl/meals'),
@@ -74,14 +136,15 @@ class MealsService {
 
       // 200/201 are both reasonable success codes for a create endpoint.
       if (response.statusCode != 200 && response.statusCode != 201) {
+        print('Failed to add meal: ${response.statusCode} ${response.body}'); // Debug log
         throw Exception(
-          'Failed to add meal (${response.statusCode}): ${response.body}',
+          'เพิ่มมื้ออาหารไม่สำเร็จ (${response.statusCode}): ${response.body}',
         );
       }
     } on TimeoutException {
-      throw Exception('Server timed out. Please try again.');
+      throw Exception('เซิร์ฟเวอร์ตอบสนองช้า กรุณาลองใหม่อีกครั้ง');
     } on SocketException {
-      throw Exception('No connection to server.');
+      throw Exception('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้');
     }
   }
 
@@ -98,13 +161,13 @@ class MealsService {
 
       if (response.statusCode != 200 && response.statusCode != 204) {
         throw Exception(
-          'Failed to delete meal (${response.statusCode}): ${response.body}',
+          'ลบมื้ออาหารไม่สำเร็จ (${response.statusCode}): ${response.body}',
         );
       }
     } on TimeoutException {
-      throw Exception('Server timed out. Please try again.');
+      throw Exception('เซิร์ฟเวอร์ตอบสนองช้า กรุณาลองใหม่อีกครั้ง');
     } on SocketException {
-      throw Exception('No connection to server.');
+      throw Exception('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้');
     }
   }
 

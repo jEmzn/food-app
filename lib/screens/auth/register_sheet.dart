@@ -81,18 +81,18 @@ class _RegisterSheetState extends State<RegisterSheet> {
               Image.asset('assets/login_logo.png', height: 120),
               SizedBox(height: 20),
               Text(
-                'Registration',
+                'ลงทะเบียน',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.mali(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               SizedBox(height: 5),
               Text(
-                'Create your account to get started with FoodApp.',
+                'สร้างบัญชีของคุณเพื่อเริ่มต้นใช้งาน FoodApp',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
+                style: GoogleFonts.mali(
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
                   color: Colors.grey[600],
@@ -100,8 +100,8 @@ class _RegisterSheetState extends State<RegisterSheet> {
               ),
               SizedBox(height: 20),
               Text(
-                'Username',
-                style: GoogleFonts.inter(
+                'ชื่อผู้ใช้',
+                style: GoogleFonts.mali(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
@@ -110,8 +110,8 @@ class _RegisterSheetState extends State<RegisterSheet> {
               TextField(
                 controller: _nameController,
                 decoration: InputDecoration(
-                  hintText: 'Enter your Username',
-                  hintStyle: GoogleFonts.inter(
+                  hintText: 'กรอกชื่อผู้ใช้ของคุณ',
+                  hintStyle: GoogleFonts.mali(
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
                     color: Colors.grey[600],
@@ -132,8 +132,8 @@ class _RegisterSheetState extends State<RegisterSheet> {
               ),
               SizedBox(height: 16),
               Text(
-                'Email',
-                style: GoogleFonts.inter(
+                'อีเมล',
+                style: GoogleFonts.mali(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
@@ -142,8 +142,8 @@ class _RegisterSheetState extends State<RegisterSheet> {
               TextField(
                 controller: _emailController,
                 decoration: InputDecoration(
-                  hintText: 'Enter your Email',
-                  hintStyle: GoogleFonts.inter(
+                  hintText: 'กรอกอีเมลของคุณ',
+                  hintStyle: GoogleFonts.mali(
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
                     color: Colors.grey[600],
@@ -164,8 +164,8 @@ class _RegisterSheetState extends State<RegisterSheet> {
               ),
               SizedBox(height: 16),
               Text(
-                'Password',
-                style: GoogleFonts.inter(
+                'รหัสผ่าน',
+                style: GoogleFonts.mali(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
@@ -175,8 +175,8 @@ class _RegisterSheetState extends State<RegisterSheet> {
                 controller: _passwordController,
                 obscureText: true,
                 decoration: InputDecoration(
-                  hintText: 'Enter your Password',
-                  hintStyle: GoogleFonts.inter(
+                  hintText: 'กรอกรหัสผ่านของคุณ',
+                  hintStyle: GoogleFonts.mali(
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
                     color: Colors.grey[600],
@@ -197,8 +197,8 @@ class _RegisterSheetState extends State<RegisterSheet> {
               ),
               SizedBox(height: 16),
               Text(
-                'Confirm Password',
-                style: GoogleFonts.inter(
+                'ยืนยันรหัสผ่าน',
+                style: GoogleFonts.mali(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
@@ -208,8 +208,8 @@ class _RegisterSheetState extends State<RegisterSheet> {
                 controller: _confirmPasswordController,
                 obscureText: true,
                 decoration: InputDecoration(
-                  hintText: 'Enter your Password',
-                  hintStyle: GoogleFonts.inter(
+                  hintText: 'กรอกรหัสผ่านอีกครั้ง',
+                  hintStyle: GoogleFonts.mali(
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
                     color: Colors.grey[600],
@@ -245,8 +245,8 @@ class _RegisterSheetState extends State<RegisterSheet> {
                     },
                   ),
                   Text(
-                    'I agree to the Terms and Conditions',
-                    style: GoogleFonts.inter(
+                    'ฉันยอมรับข้อกำหนดและเงื่อนไข',
+                    style: GoogleFonts.mali(
                       fontSize: 12,
                       fontWeight: FontWeight.w400,
                       color: Colors.grey[600],
@@ -262,7 +262,7 @@ class _RegisterSheetState extends State<RegisterSheet> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
-                  textStyle: GoogleFonts.inter(fontSize: 16),
+                  textStyle: GoogleFonts.mali(fontSize: 16),
                   minimumSize: Size(double.infinity, 50),
                 ),
                 onPressed: _isLoading
@@ -273,7 +273,7 @@ class _RegisterSheetState extends State<RegisterSheet> {
                             _passwordController.text.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Please fill in all fields'),
+                              content: Text('กรุณากรอกข้อมูลให้ครบทุกช่อง'),
                             ),
                           );
                           return;
@@ -282,7 +282,7 @@ class _RegisterSheetState extends State<RegisterSheet> {
                             _confirmPasswordController.text) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Passwords do not match'),
+                              content: Text('รหัสผ่านไม่ตรงกัน'),
                             ),
                           );
                           return;
@@ -291,7 +291,7 @@ class _RegisterSheetState extends State<RegisterSheet> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                               content: Text(
-                                'Please agree to the Terms and Conditions to continue',
+                                'กรุณายอมรับข้อกำหนดและเงื่อนไขเพื่อดำเนินการต่อ',
                               ),
                             ),
                           );
@@ -339,7 +339,7 @@ class _RegisterSheetState extends State<RegisterSheet> {
                           color: Colors.white,
                         ),
                       )
-                    : const Text('Register'),
+                    : const Text('ลงทะเบียน'),
               ),
               SizedBox(height: 32),
               Row(
@@ -350,9 +350,9 @@ class _RegisterSheetState extends State<RegisterSheet> {
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 8),
                     child: (Text(
-                      'Or continue with',
+                      'หรือดำเนินการต่อด้วย',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.mali(
                         fontSize: 12,
                         color: Colors.grey[600],
                       ),
@@ -397,8 +397,8 @@ class _RegisterSheetState extends State<RegisterSheet> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Already have an account?',
-                    style: GoogleFonts.inter(
+                    'มีบัญชีอยู่แล้ว?',
+                    style: GoogleFonts.mali(
                       fontSize: 12,
                       color: Colors.grey[600],
                     ),
@@ -415,8 +415,8 @@ class _RegisterSheetState extends State<RegisterSheet> {
                       ),
                     },
                     child: Text(
-                      'Sign in',
-                      style: GoogleFonts.inter(
+                      'เข้าสู่ระบบ',
+                      style: GoogleFonts.mali(
                         fontSize: 12,
                         color: primaryColor,
                       ),

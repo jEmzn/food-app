@@ -32,7 +32,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: Text('Settings', style: GoogleFonts.poppins()),
+        title: Text('การตั้งค่า', style: GoogleFonts.mali()),
         backgroundColor: AppTheme.backgroundColor,
         elevation: 0,
         foregroundColor: Colors.black,
@@ -40,24 +40,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _Group(title: 'Notifications', children: [
+          _Group(title: 'การแจ้งเตือน', children: [
             SwitchListTile(
-              title: const Text('Meal reminders'),
-              subtitle: const Text('Daily push to log your meals'),
+              title: const Text('เตือนมื้ออาหาร'),
+              subtitle: const Text('แจ้งเตือนรายวันให้บันทึกมื้ออาหารของคุณ'),
               value: _prefs.notificationsEnabled,
               onChanged: (v) =>
                   setState(() => _prefs.notificationsEnabled = v),
             ),
           ]),
-          _Group(title: 'Display', children: [
+          _Group(title: 'การแสดงผล', children: [
             SwitchListTile(
-              title: const Text('Dark mode'),
-              subtitle: const Text('Coming soon — toggle has no effect yet'),
+              title: const Text('โหมดมืด'),
+              subtitle: const Text('เร็ว ๆ นี้ — ปุ่มนี้ยังไม่มีผล'),
               value: _prefs.darkMode,
               onChanged: (v) => setState(() => _prefs.darkMode = v),
             ),
           ]),
-          _Group(title: 'Units', children: [
+          _Group(title: 'หน่วย', children: [
             // RadioGroup is the modern (Flutter 3.32+) replacement for the
             // deprecated `groupValue`/`onChanged` props on RadioListTile.
             // The group manages selection for all child Radios with matching type.
@@ -68,11 +68,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: const Column(
                 children: [
                   RadioListTile<WeightUnit>(
-                    title: Text('Kilograms (kg)'),
+                    title: Text('กิโลกรัม (กก.)'),
                     value: WeightUnit.kg,
                   ),
                   RadioListTile<WeightUnit>(
-                    title: Text('Pounds (lb)'),
+                    title: Text('ปอนด์ (lb)'),
                     value: WeightUnit.lb,
                   ),
                 ],
@@ -81,8 +81,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ]),
           const SizedBox(height: 24),
           Text(
-            'Note: settings reset on app restart until shared_preferences is added.',
-            style: GoogleFonts.inter(
+            'หมายเหตุ: การตั้งค่าจะรีเซ็ตเมื่อรีสตาร์ทแอป จนกว่าจะเพิ่ม shared_preferences',
+            style: GoogleFonts.mali(
                 color: Colors.grey[600], fontSize: 12, fontStyle: FontStyle.italic),
           ),
         ],
@@ -105,7 +105,7 @@ class _Group extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(left: 8, bottom: 6),
             child: Text(title,
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.mali(
                     fontSize: 16, fontWeight: FontWeight.w600)),
           ),
           Card(color: Colors.white, elevation: 0, child: Column(children: children)),

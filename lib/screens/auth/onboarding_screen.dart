@@ -58,7 +58,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                'Please select gender, date of birth, height, and weight',
+                'กรุณาเลือกเพศ วันเกิด ส่วนสูง และน้ำหนัก',
               ),
             ),
           );
@@ -73,7 +73,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Please select activity level to proceed'),
+              content: Text('กรุณาเลือกระดับกิจกรรมเพื่อดำเนินการต่อ'),
             ),
           );
         }
@@ -83,7 +83,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           _finishOnboarding();
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please select goal type to proceed')),
+            const SnackBar(content: Text('กรุณาเลือกประเภทเป้าหมายเพื่อดำเนินการต่อ')),
           );
         }
       default:
@@ -103,7 +103,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       initialDate: _selectedDob ?? DateTime(now.year - 25, now.month, now.day),
       firstDate: DateTime(1900),
       lastDate: DateTime(now.year - 13, now.month, now.day),
-      helpText: 'Select date of birth',
+      helpText: 'เลือกวันเกิด',
     );
     if (picked != null) {
       setState(() => _selectedDob = picked);
@@ -141,7 +141,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'Failed to save your information (${response.statusCode}). Please try again.',
+                'บันทึกข้อมูลไม่สำเร็จ (${response.statusCode}) กรุณาลองใหม่อีกครั้ง',
               ),
             ),
           );
@@ -158,7 +158,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Could not save your information. Please check your connection and try again.',
+              'ไม่สามารถบันทึกข้อมูลได้ กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่อีกครั้ง',
             ),
           ),
         );
@@ -168,25 +168,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
   }
 
-  String _formatEnum(String enumString) {
-    return enumString.split('.').last.replaceAllMapped(
-          RegExp(r'[A-Z]'),
-          (m) => ' ${m.group(0)}',
-        ).trim();
-  }
-
   String _getActivityDescription(ActivityLevel level) {
     switch (level) {
       case ActivityLevel.sedentary:
-        return 'Little or no exercise';
+        return 'ออกกำลังกายเล็กน้อยหรือไม่ออกเลย';
       case ActivityLevel.lightlyActive:
-        return 'Light exercise/sports 1-3 days/week';
+        return 'ออกกำลังกายเบา ๆ 1-3 วัน/สัปดาห์';
       case ActivityLevel.moderatelyActive:
-        return 'Moderate exercise/sports 3-5 days/week';
+        return 'ออกกำลังกายปานกลาง 3-5 วัน/สัปดาห์';
       case ActivityLevel.veryActive:
-        return 'Hard exercise/sports 6-7 days a week';
+        return 'ออกกำลังกายหนัก 6-7 วัน/สัปดาห์';
       case ActivityLevel.extremelyActive:
-        return 'Very hard exercise/sports & physical job or 2x training';
+        return 'ออกกำลังกายหนักมาก และทำงานที่ใช้แรงกาย หรือฝึกซ้อม 2 รอบ/วัน';
       default:
         return '';
     }
@@ -211,8 +204,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               )
             : null,
         title: Text(
-          'Step ${_currentPage + 1} of 3',
-          style: GoogleFonts.poppins(
+          'ขั้นตอนที่ ${_currentPage + 1} จาก 3',
+          style: GoogleFonts.mali(
             color: Colors.black,
             fontWeight: FontWeight.w600,
           ),
@@ -245,7 +238,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
-                  textStyle: GoogleFonts.inter(fontSize: 16),
+                  textStyle: GoogleFonts.mali(fontSize: 16),
                 ),
                 child: _isSubmitting
                     ? const SizedBox(
@@ -256,7 +249,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           color: Colors.white,
                         ),
                       )
-                    : Text(_currentPage < 2 ? 'Next' : 'Finish'),
+                    : Text(_currentPage < 2 ? 'ถัดไป' : 'เสร็จสิ้น'),
               ),
             ),
           ),
@@ -272,27 +265,27 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Tell us about yourself',
-            style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.w600),
+            'บอกเราเกี่ยวกับตัวคุณ',
+            style: GoogleFonts.mali(fontSize: 24, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           Text(
-            'This information will help us personalize your experience',
-            style: GoogleFonts.inter(fontSize: 16, color: Colors.grey[600]),
+            'ข้อมูลนี้จะช่วยให้เราปรับประสบการณ์ให้เหมาะกับคุณ',
+            style: GoogleFonts.mali(fontSize: 16, color: Colors.grey[600]),
           ),
           const SizedBox(height: 24),
           _buildTextField(
-            'Height (cm)',
-            'Enter your height',
-            'cm',
+            'ส่วนสูง (ซม.)',
+            'กรอกส่วนสูงของคุณ',
+            'ซม.',
             _heightController,
             TextInputType.number,
           ),
           const SizedBox(height: 16),
           _buildTextField(
-            'Weight (kg)',
-            'Enter your weight',
-            'kg',
+            'น้ำหนัก (กก.)',
+            'กรอกน้ำหนักของคุณ',
+            'กก.',
             _weightController,
             TextInputType.number,
           ),
@@ -308,7 +301,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ? '${_selectedDob!.day.toString().padLeft(2, '0')}/'
             '${_selectedDob!.month.toString().padLeft(2, '0')}/'
             '${_selectedDob!.year}'
-        : 'Select date';
+        : 'เลือกวันที่';
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -318,8 +311,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Date of Birth',
-                style: GoogleFonts.poppins(
+                'วันเกิด',
+                style: GoogleFonts.mali(
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
                 ),
@@ -342,7 +335,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       const SizedBox(width: 8),
                       Text(
                         dobLabel,
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.mali(
                           fontSize: 14,
                           color: _selectedDob != null
                               ? Colors.black
@@ -361,8 +354,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Sex',
-              style: GoogleFonts.poppins(
+              'เพศ',
+              style: GoogleFonts.mali(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),
@@ -423,13 +416,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Activity Level',
-            style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.w600),
+            'ระดับกิจกรรม',
+            style: GoogleFonts.mali(fontSize: 24, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           Text(
-            'How active are you on a daily basis?',
-            style: GoogleFonts.inter(fontSize: 16, color: Colors.grey[600]),
+            'ในแต่ละวันคุณเคลื่อนไหวมากแค่ไหน?',
+            style: GoogleFonts.mali(fontSize: 16, color: Colors.grey[600]),
           ),
           const SizedBox(height: 24),
           ...ActivityLevel.values.where((l) => l != ActivityLevel.unknown).map(
@@ -458,8 +451,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                _formatEnum(level.toString()),
-                                style: GoogleFonts.inter(
+                                level.label,
+                                style: GoogleFonts.mali(
                                   fontWeight: FontWeight.w500,
                                   fontSize: 16,
                                   color: _selectedActivityLevel == level
@@ -470,7 +463,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               const SizedBox(height: 4),
                               Text(
                                 _getActivityDescription(level),
-                                style: GoogleFonts.inter(
+                                style: GoogleFonts.mali(
                                   fontSize: 14,
                                   color: _selectedActivityLevel == level
                                       ? Colors.white70
@@ -507,13 +500,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Your Goal',
-            style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.w600),
+            'เป้าหมายของคุณ',
+            style: GoogleFonts.mali(fontSize: 24, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
           Text(
-            'What do you want to achieve?',
-            style: GoogleFonts.inter(fontSize: 16, color: Colors.grey[600]),
+            'คุณต้องการบรรลุเป้าหมายอะไร?',
+            style: GoogleFonts.mali(fontSize: 16, color: Colors.grey[600]),
           ),
           const SizedBox(height: 24),
           Expanded(
@@ -540,8 +533,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           ),
                           child: Center(
                             child: Text(
-                              _formatEnum(goal.toString()),
-                              style: GoogleFonts.inter(
+                              goal.label,
+                              style: GoogleFonts.mali(
                                 fontSize: 18,
                                 color: _selectedGoal == goal
                                     ? Colors.white
@@ -573,7 +566,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       children: [
         Text(
           label,
-          style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w500),
+          style: GoogleFonts.mali(fontSize: 16, fontWeight: FontWeight.w500),
         ),
         const SizedBox(height: 8),
         TextField(

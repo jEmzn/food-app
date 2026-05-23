@@ -16,19 +16,21 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   static const String _fallbackProfileImage = 'assets/images/test_profile.jpg';
 
+  // `isLogout` below flags the destructive option by its index, so reordering
+  // or translating these labels is safe.
   late final List<_ProfileOption> _options = [
-    _ProfileOption('Profile info', Icons.person_outline,
+    _ProfileOption('ข้อมูลโปรไฟล์', Icons.person_outline,
         () => _go(AppRoutes.profileInfoRoute)),
     _ProfileOption(
-        'History', Icons.history, () => _go(AppRoutes.historyRoute)),
+        'ประวัติ', Icons.history, () => _go(AppRoutes.historyRoute)),
     _ProfileOption(
-        'Rate the App', Icons.star_outline, () => _go(AppRoutes.rateAppRoute)),
-    _ProfileOption('Settings', Icons.settings_outlined,
+        'ให้คะแนนแอป', Icons.star_outline, () => _go(AppRoutes.rateAppRoute)),
+    _ProfileOption('การตั้งค่า', Icons.settings_outlined,
         () => _go(AppRoutes.settingsRoute)),
     _ProfileOption(
-        'Help & Support', Icons.help_outline, () => _go(AppRoutes.helpRoute)),
-    _ProfileOption('About', Icons.info_outline, () => _go(AppRoutes.aboutRoute)),
-    _ProfileOption('Logout', Icons.logout, _confirmLogout),
+        'ช่วยเหลือและสนับสนุน', Icons.help_outline, () => _go(AppRoutes.helpRoute)),
+    _ProfileOption('เกี่ยวกับ', Icons.info_outline, () => _go(AppRoutes.aboutRoute)),
+    _ProfileOption('ออกจากระบบ', Icons.logout, _confirmLogout),
   ];
 
   // Push a named route. Used by all the profile menu options.
@@ -39,7 +41,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // Avatar tap: still a placeholder until we add image upload.
   void _showComingSoon() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Coming soon')),
+      const SnackBar(content: Text('เร็ว ๆ นี้')),
     );
   }
 
@@ -47,20 +49,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Sign out?', style: GoogleFonts.poppins()),
+        title: Text('ออกจากระบบ?', style: GoogleFonts.mali()),
         content: Text(
-          'You will need to sign in again to access your account.',
-          style: GoogleFonts.inter(),
+          'คุณจะต้องเข้าสู่ระบบอีกครั้งเพื่อเข้าถึงบัญชีของคุณ',
+          style: GoogleFonts.mali(),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: const Text('ยกเลิก'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(
-              'Sign out',
+              'ออกจากระบบ',
               style: TextStyle(color: Colors.red[600]),
             ),
           ),
@@ -93,21 +95,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = FirebaseAuth.instance.currentUser;
     final displayName = (user?.displayName?.trim().isNotEmpty ?? false)
         ? user!.displayName!
-        : 'User';
+        : 'ผู้ใช้';
     final email = user?.email ?? '';
 
     return SingleChildScrollView(
       padding: const EdgeInsets.only(
         top: 50.0,
         bottom: 80.0,
-        left: 24.0,
-        right: 24.0,
+        left: AppTheme.spacingL,
+        right: AppTheme.spacingL,
       ),
       child: Column(
         children: [
-          const SizedBox(height: 20),
-          const TopLabel(textLabel: 'My Profile'),
-          const SizedBox(height: 18),
+          const SizedBox(height: AppTheme.spacingL),
+          const TopLabel(textLabel: 'โปรไฟล์ของฉัน'),
+          const SizedBox(height: AppTheme.spacingM),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.only(top: 35),
@@ -153,44 +155,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppTheme.spacingS),
           Text(
             displayName,
-            style: GoogleFonts.poppins(
-              color: Colors.black,
-              fontSize: 22,
-              fontWeight: FontWeight.w600,
-            ),
+            style: Theme.of(context).textTheme.headlineSmall,
           ),
           if (email.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(
               email,
-              style: GoogleFonts.inter(
-                color: Colors.grey[600],
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-              ),
+              style: Theme.of(context).textTheme.labelMedium
+                  ?.copyWith(color: AppTheme.subtleText, fontWeight: FontWeight.w400),
             ),
           ],
           Container(
-            margin: const EdgeInsets.only(top: 30),
+            margin: const EdgeInsets.only(top: AppTheme.spacingL),
             decoration: const BoxDecoration(
               borderRadius: BorderRadius.all(Radius.circular(30)),
-              color: Colors.white,
+              color: AppTheme.surfaceColor,
+              boxShadow: AppTheme.cardShadow,
             ),
             child: ListView.separated(
               physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(vertical: AppTheme.spacingS),
               shrinkWrap: true,
               itemCount: _options.length,
               separatorBuilder: (_, __) => Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTheme.spacingL,
+                ),
                 child: Divider(thickness: 1, color: Colors.grey[300]),
               ),
               itemBuilder: (context, index) {
                 final option = _options[index];
-                final isLogout = option.label == 'Logout';
+                // Logout is always the last option (see _options above).
+                final isLogout = index == _options.length - 1;
                 return ListTile(
                   leading: Icon(
                     option.icon,
@@ -200,10 +199,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   title: Text(
                     option.label,
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w500,
-                      color: isLogout ? Colors.red[600] : Colors.black,
+                      color: isLogout
+                          ? Colors.red[600]
+                          : AppTheme.onSurfaceColor,
                     ),
                   ),
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),

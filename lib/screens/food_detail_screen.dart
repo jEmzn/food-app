@@ -17,7 +17,25 @@ class FoodDetailScreen extends StatefulWidget {
 }
 
 // Valid meal types accepted by the backend.
+// NOTE: keep these English keys — they are sent to POST /meals as-is.
 const List<String> _mealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
+
+// Thai label for a raw meal-type key (display only — the key is still what we
+// send to the backend).
+String _mealTypeLabel(String type) {
+  switch (type) {
+    case 'breakfast':
+      return 'มื้อเช้า';
+    case 'lunch':
+      return 'มื้อกลางวัน';
+    case 'dinner':
+      return 'มื้อเย็น';
+    case 'snack':
+      return 'ของว่าง';
+    default:
+      return type;
+  }
+}
 
 // Pick a sensible default meal type from the current hour. Lets the user
 // tap "Add" with one fewer interaction during typical meal windows.
@@ -108,19 +126,24 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.only(bottom: 24),
+                padding: const EdgeInsets.only(bottom: AppTheme.spacingL),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildImageHeader(),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+                      padding: const EdgeInsets.fromLTRB(
+                        AppTheme.spacingL,
+                        AppTheme.spacingL,
+                        AppTheme.spacingL,
+                        0,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             food.name,
-                            style: GoogleFonts.poppins(
+                            style: GoogleFonts.mali(
                               fontSize: 28,
                               fontWeight: FontWeight.w600,
                             ),
@@ -128,17 +151,17 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
                           const SizedBox(height: 6),
                           Text(
                             '${_kcal.round()} kcal',
-                            style: GoogleFonts.inter(
-                              fontSize: 16,
-                              color: AppTheme.primaryHardColor,
-                              fontWeight: FontWeight.w500,
-                            ),
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(
+                                  fontSize: 16,
+                                  color: AppTheme.primaryHardColor,
+                                ),
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: AppTheme.spacingL),
                           _buildServingSelector(),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: AppTheme.spacingL),
                           _buildMacrosCard(),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: AppTheme.spacingL),
                           _buildMealTypePicker(),
                         ],
                       ),
@@ -196,27 +219,18 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
   // Serving size row: minus button, current grams, plus button.
   Widget _buildServingSelector() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.shadowColor,
-            blurRadius: 15,
-            offset: const Offset(0, 4),
-          ),
-        ],
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTheme.spacingL,
+        vertical: AppTheme.spacingM,
+      ),
+      decoration: const BoxDecoration(
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.all(Radius.circular(20)),
+        boxShadow: AppTheme.cardShadow,
       ),
       child: Row(
         children: [
-          Text(
-            'Serving',
-            style: GoogleFonts.poppins(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          Text('ปริมาณ', style: Theme.of(context).textTheme.titleMedium),
           const Spacer(),
           _circleButton(Icons.remove, () => _changeServing(-_step)),
           SizedBox(
@@ -224,10 +238,8 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
             child: Text(
               _formatQuantity(),
               textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+              style: Theme.of(context).textTheme.bodyMedium
+                  ?.copyWith(fontWeight: FontWeight.w600),
             ),
           ),
           _circleButton(Icons.add, () => _changeServing(_step)),
@@ -244,7 +256,8 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
         customBorder: const CircleBorder(),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(8),
+          // 12 padding + 20 icon = 44dp tap target (accessibility minimum).
+          padding: const EdgeInsets.all(AppTheme.spacingS),
           child: Icon(icon, size: 20, color: AppTheme.primaryHardColor),
         ),
       ),
@@ -252,38 +265,27 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
   }
 
   // Card that lays out the three macros side-by-side, each with its own pill.
+  // White (not green) so it doesn't compete with the green primary buttons —
+  // dark text on white is also easier to read than white-on-green numbers.
   Widget _buildMacrosCard() {
     return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppTheme.primaryColor,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primaryColor.withAlpha(110),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
+      padding: const EdgeInsets.all(AppTheme.spacingL),
+      decoration: const BoxDecoration(
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.all(Radius.circular(24)),
+        boxShadow: AppTheme.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Macros',
-            style: GoogleFonts.poppins(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 16),
+          Text('สารอาหารหลัก', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: AppTheme.spacingM),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _macroTile('Carbs', _carbs),
-              _macroTile('Protein', _protein),
-              _macroTile('Fat', _fat),
+              _macroTile('คาร์บ', _carbs),
+              _macroTile('โปรตีน', _protein),
+              _macroTile('ไขมัน', _fat),
             ],
           ),
         ],
@@ -296,19 +298,14 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
       children: [
         Text(
           label,
-          style: GoogleFonts.inter(
-            color: Colors.white.withAlpha(204),
-            fontSize: 12,
-          ),
+          style: Theme.of(context).textTheme.labelSmall
+              ?.copyWith(color: AppTheme.primaryHardColor),
         ),
         const SizedBox(height: 6),
         Text(
           '${grams.round()} g',
-          style: GoogleFonts.poppins(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
+          style: Theme.of(context).textTheme.titleMedium
+              ?.copyWith(fontSize: 18),
         ),
       ],
     );
@@ -318,46 +315,30 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
   // the time-of-day default before tapping Add.
   Widget _buildMealTypePicker() {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.shadowColor,
-            blurRadius: 15,
-            offset: const Offset(0, 4),
-          ),
-        ],
+      padding: const EdgeInsets.all(AppTheme.spacingM),
+      decoration: const BoxDecoration(
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.all(Radius.circular(20)),
+        boxShadow: AppTheme.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Meal',
-            style: GoogleFonts.poppins(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 12),
+          Text('มื้ออาหาร', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: AppTheme.spacingS),
           // Wrap (not Row) so the chips wrap on small screens instead of
           // overflowing.
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: AppTheme.spacingXS,
+            runSpacing: AppTheme.spacingXS,
             children: _mealTypes.map((type) {
               final selected = type == _selectedMealType;
               return ChoiceChip(
                 label: Text(
-                  // Capitalise: "breakfast" → "Breakfast".
-                  type[0].toUpperCase() + type.substring(1),
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: selected
-                        ? Colors.white
-                        : AppTheme.primaryHardColor,
+                  // Show the Thai label; the raw key is still sent to the API.
+                  _mealTypeLabel(type),
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: selected ? Colors.white : AppTheme.primaryHardColor,
                   ),
                 ),
                 selected: selected,
@@ -382,25 +363,26 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
     if (_submitting) return; // guard against double-tap
     setState(() => _submitting = true);
 
-    final item = widget.food.toMealItemJson(
-      quantity: _quantity,
-      calories: _kcal,
-      carbsG: _carbs,
-      proteinG: _protein,
-      fatG: _fat,
-    );
 
     try {
       await MealsService.addMeal(
         date: DateTime.now(),
         mealType: _selectedMealType,
-        mealItems: [item],
+        foodCatalogId: widget.food.id,
+        foodName: widget.food.name,
+        imageUrl: widget.food.imageUrl,
+        quantity: _quantity,
+        unit: widget.food.unit,
+        calories: _kcal,
+        proteinG: _protein,
+        carbsG: _carbs,
+        fatG: _fat,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Added ${widget.food.name} to $_selectedMealType',
+            'เพิ่ม ${widget.food.name} ลงใน${_mealTypeLabel(_selectedMealType)}แล้ว',
           ),
           duration: const Duration(seconds: 2),
         ),
@@ -408,18 +390,27 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
       // Signal the caller (HomeScreen) to refresh today's totals.
       Navigator.of(context).pop(true);
     } catch (e) {
+      print('[submitMeal] add meal failed: $e'); // Debug log
       if (!mounted) return;
-      setState(() => _submitting = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
+        const SnackBar(content: Text('ไม่สามารถเพิ่มมื้ออาหารได้ กรุณาลองใหม่อีกครั้ง')),
       );
+    } finally {
+      // Always re-enable the button, whether the add succeeded or failed.
+      // On success the screen has popped, so guard with `mounted`.
+      if (mounted) setState(() => _submitting = false);
     }
   }
 
   // Sticky CTA pinned to the bottom of the screen.
   Widget _buildAddToMealButton() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+      padding: const EdgeInsets.fromLTRB(
+        AppTheme.spacingL,
+        AppTheme.spacingXS,
+        AppTheme.spacingL,
+        AppTheme.spacingL,
+      ),
       child: SizedBox(
         width: double.infinity,
         height: 56,
@@ -444,11 +435,9 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
                   ),
                 )
               : Text(
-                  'Add to meal',
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  'เพิ่มลงในมื้ออาหาร',
+                  style: Theme.of(context).textTheme.titleMedium
+                      ?.copyWith(color: Colors.white),
                 ),
         ),
       ),

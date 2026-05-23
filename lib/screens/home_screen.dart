@@ -1,4 +1,5 @@
 import 'package:app1/config/app_theme.dart';
+import 'package:app1/config/routes.dart';
 import 'package:app1/models/body_metrics.dart';
 import 'package:app1/screens/food_detail_screen.dart';
 import 'package:app1/services/api_service.dart';
@@ -34,6 +35,11 @@ class _HomeScreenState extends State<HomeScreen> {
   double _consumedProteinG = 0;
   double _consumedFatG = 0;
 
+  // When the meals fetch fails (network down, 401, bad shape) we keep the
+  // error string here so the Daily Target card can show a small caption
+  // instead of silently displaying zeros. Null = no error / not loaded yet.
+  String? _mealsError;
+
   @override
   void initState() {
     super.initState();
@@ -41,40 +47,65 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadTodayMeals();
   }
 
-  // Sum calories + macros across every item in every meal logged today.
-  // Defensive key fallbacks mirror history_screen.dart — backend field names
-  // have shifted before and we don't want a tiny rename to wipe the totals.
+  // Sum calories + macros across every meal logged today.
+  //
+  // Handles two backend response shapes defensively:
+  //   1. Nested:  { id, meal_type, items: [{calories, proteinG, ...}, ...] }
+  //   2. Flat:    { id, meal_type, calories, proteinG, ... }
+  // addMeal() currently POSTs flat fields, so depending on how the backend
+  // stores them the GET response may not include an items[] array at all.
+  //
+  // On failure we capture the error in [_mealsError] so the Daily Target card
+  // can show a small caption — better than silently rendering zeros.
   Future<void> _loadTodayMeals() async {
     try {
       final meals = await MealsService.getMealsForDate(DateTime.now());
 
-      double kcal = 0;
-      double carbs = 0;
-      double protein = 0;
-      double fat = 0;
+      // TEMP DEBUG: print the raw shape so we can confirm what the backend
+      // returns. Remove before production cut (CLAUDE.md pre-commit checklist).
+      // ignore: avoid_print
+      print('[home] meals raw=$meals');
+
+      final totals = _Totals();
 
       for (final meal in meals) {
-        final items = (meal['items'] ?? meal['mealItems']) as List?;
-        if (items == null) continue;
-        for (final raw in items.whereType<Map>()) {
-          final m = raw.map((k, v) => MapEntry(k.toString(), v));
-          kcal += _asDouble(m['calories'] ?? m['kcal']);
-          carbs += _asDouble(m['carbs_g'] ?? m['carbsG']);
-          protein += _asDouble(m['protein_g'] ?? m['proteinG']);
-          fat += _asDouble(m['fat_g'] ?? m['fatG']);
+        final m = meal.map((k, v) => MapEntry(k.toString(), v));
+        final items = (m['items'] ?? m['mealItems']) as List?;
+        if (items != null && items.isNotEmpty) {
+          for (final raw in items.whereType<Map>()) {
+            _addItem(raw.map((k, v) => MapEntry(k.toString(), v)), totals);
+          }
+        } else {
+          // Flat meal — the meal row itself carries the nutrition fields.
+          _addItem(m, totals);
         }
       }
 
       if (!mounted) return;
       setState(() {
-        _consumedKcal = kcal.round();
-        _consumedCarbsG = carbs;
-        _consumedProteinG = protein;
-        _consumedFatG = fat;
+        _consumedKcal = totals.kcal.round();
+        _consumedCarbsG = totals.carbs;
+        _consumedProteinG = totals.protein;
+        _consumedFatG = totals.fat;
+        _mealsError = null;
       });
-    } catch (_) {
-      // Swallow — totals just stay at their previous values (or 0 on first load).
+    } catch (e) {
+      // ignore: avoid_print
+      print('[home] _loadTodayMeals failed: $e');
+      if (!mounted) return;
+      setState(() => _mealsError = "โหลดมื้ออาหารวันนี้ไม่สำเร็จ");
     }
+  }
+
+  // Add one item's nutrition into the running totals. Tries a handful of
+  // common key spellings (snake_case, camelCase, short forms) because the
+  // backend has renamed fields before and we don't want a one-letter typo
+  // to wipe the bar.
+  void _addItem(Map<String, dynamic> m, _Totals t) {
+    t.kcal += _asDouble(m['calories'] ?? m['kcal'] ?? m['total_calories']);
+    t.carbs += _asDouble(m['carbs_g'] ?? m['carbsG'] ?? m['carbs']);
+    t.protein += _asDouble(m['protein_g'] ?? m['proteinG'] ?? m['protein']);
+    t.fat += _asDouble(m['fat_g'] ?? m['fatG'] ?? m['fat']);
   }
 
   // Coerce num/String/null into a double for totals math.
@@ -122,7 +153,16 @@ class _HomeScreenState extends State<HomeScreen> {
   String get _displayName {
     final name = FirebaseAuth.instance.currentUser?.displayName;
     if (name != null && name.trim().isNotEmpty) return name;
-    return 'there';
+    return 'คุณ';
+  }
+
+  // Use the signed-in user's profile photo when Firebase has one; otherwise
+  // fall back to the bundled placeholder asset. Mirrors ProfileScreen so the
+  // same avatar shows in both places.
+  ImageProvider get _avatarImage {
+    final url = FirebaseAuth.instance.currentUser?.photoURL;
+    if (url != null && url.isNotEmpty) return NetworkImage(url);
+    return const AssetImage(HomeScreen.profileImage);
   }
 
   String _formatKcal(int v) {
@@ -135,77 +175,69 @@ class _HomeScreenState extends State<HomeScreen> {
     return buf.toString();
   }
 
+  // Pull-to-refresh handler. Reloads both the body metrics (target may have
+  // changed in another tab) and today's meal totals.
+  Future<void> _refresh() async {
+    await Future.wait([_loadMetrics(), _loadTodayMeals()]);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: SingleChildScrollView(
+        // alwaysScrollable so the pull gesture works even when content
+        // doesn't overflow the viewport (e.g. on tall tablets).
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          children: [
           Padding(
             padding: EdgeInsets.only(top: 60, bottom: 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(left: 24, right: 24),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.spacingL,
+                  ),
                   child: Row(
                     children: [
-                      // SizedBox(width: 24),
                       Container(
                         width: 70,
                         height: 70,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           image: DecorationImage(
-                            image: AssetImage(HomeScreen.profileImage),
+                            image: _avatarImage,
                             fit: BoxFit.cover,
                           ),
                           color: Colors.black,
                         ),
                       ),
-                      SizedBox(width: 16),
+                      const SizedBox(width: AppTheme.spacingM),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Hello',
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w400,
-                            ),
+                            'สวัสดี',
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(fontWeight: FontWeight.w400),
                           ),
-                          SizedBox(height: 8),
+                          const SizedBox(height: AppTheme.spacingXS),
                           Text(
                             _displayName,
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: Theme.of(context).textTheme.labelMedium,
                           ),
                         ],
-                      ),
-                      Spacer(),
-                      ElevatedButton(
-                        onPressed: () {},
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          minimumSize: Size(60, 60),
-                          shadowColor: const Color.fromARGB(90, 216, 216, 216),
-                          elevation: 10,
-                          foregroundColor: Colors.black,
-                          shape: CircleBorder(),
-                        ),
-                        child: Icon(
-                          Icons.notifications_none_outlined,
-                          size: 24,
-                          color: AppTheme.primaryColor,
-                        ),
                       ),
                     ],
                   ),
                 ),
-                SizedBox(height: 18),
+                const SizedBox(height: AppTheme.spacingM),
                 Padding(
-                  padding: const EdgeInsets.only(left: 24, right: 24),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppTheme.spacingL,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     spacing: 10,
@@ -213,18 +245,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       // SizedBox(width: 14),
                       Expanded(
                         child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(30),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppTheme.shadowColor,
-                                blurRadius: 15,
-                                offset: Offset(0, 0),
-                              ),
-                            ],
+                          decoration: const BoxDecoration(
+                            borderRadius: BorderRadius.all(Radius.circular(30)),
+                            boxShadow: AppTheme.cardShadow,
                           ),
                           child: SearchAnchor(
-                            viewHintText: 'Search Your Food',
+                            viewHintText: 'ค้นหาอาหารของคุณ',
                             viewBackgroundColor: Colors.white,
                             builder:
                                 (
@@ -242,9 +268,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                       0,
                                     ),
                                     leading: const Icon(Icons.search),
-                                    hintText: 'Describe Your Food',
+                                    hintText: 'อธิบายอาหารของคุณ',
                                     hintStyle: WidgetStatePropertyAll(
-                                      GoogleFonts.inter(fontSize: 14),
+                                      GoogleFonts.mali(fontSize: 14),
                                     ),
                                     padding: WidgetStatePropertyAll<EdgeInsets>(
                                       EdgeInsets.symmetric(horizontal: 16),
@@ -297,7 +323,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     return [ListTile(title: Text(e.message))];
                                   } catch (e) {
                                     return [
-                                      ListTile(title: Text('Error: $e')),
+                                      ListTile(title: Text('ข้อผิดพลาด: $e')),
                                     ];
                                   }
 
@@ -365,7 +391,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                           ScaffoldMessenger.of(
                                             context,
                                           ).showSnackBar(
-                                            SnackBar(content: Text('Error: $e')),
+                                            SnackBar(content: Text('ข้อผิดพลาด: $e')),
                                           );
                                         }
                                       },
@@ -375,87 +401,75 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                       ),
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(30),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppTheme.shadowColor,
-                              blurRadius: 15,
-                              offset: Offset(0, 0),
-                            ),
-                          ],
-                        ),
-                        child: ElevatedButton(
-                          onPressed: () => {},
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.primaryColor,
-                            foregroundColor: AppTheme.backgroundColor,
-                            textStyle: GoogleFonts.inter(fontSize: 14),
-                            padding: EdgeInsets.only(
-                              left: 16,
-                              right: 16,
-                              top: 16,
-                              bottom: 16,
-                            ),
-                          ),
-                          child: Row(
-                            spacing: 4,
-                            children: [
-                              Text('Assistant'),
-                              Image.asset(
-                                'assets/images/icons/icons_sparkle.png',
-                                width: 16,
-                                height: 16,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                 ),
                 _buildDailySummary(),
-                SizedBox(height: 18),
-                Padding(
-                  padding: const EdgeInsets.only(left: 24),
+                const SizedBox(height: AppTheme.spacingM),
+                const Padding(
+                  padding: EdgeInsets.only(left: AppTheme.spacingL),
                   child: CategoriesWidget(),
                 ),
-                SizedBox(height: 24),
-                Padding(
-                  padding: const EdgeInsets.only(left: 24, right: 24),
-                  child: Text(
-                    'Recommended Foods',
-                    style: GoogleFonts.poppins(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
+                // Only show the section once we actually have recommendations
+                // — otherwise the heading floats above an empty row.
+                if (FoodsCard.recommended.isNotEmpty) ...[
+                  const SizedBox(height: AppTheme.spacingL),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppTheme.spacingL,
+                    ),
+                    child: Text(
+                      'อาหารแนะนำ',
+                      style: Theme.of(context).textTheme.titleLarge,
                     ),
                   ),
-                ),
-                FoodsCard(),
+                  FoodsCard(),
+                ],
               ],
             ),
           ),
-          SizedBox(height: 120),
+          const SizedBox(height: 120),
         ],
+      ),
       ),
     );
   }
 
   Widget _buildDailySummary() {
-    final target = _targetKcal;
-    final progress = target > 0
-        ? (_consumedKcal / target).clamp(0.0, 1.0)
-        : 0.0;
-    final headerText = _loadingMetrics
-        ? 'Loading…'
-        : target > 0
-            ? '${_formatKcal(_consumedKcal)} / ${_formatKcal(target)} kcal'
-            : 'Set your goal to see target';
+    // While body metrics are loading, render a spinner card so users don't
+    // briefly see "0 / 0 kcal" (which looks identical to a real bug).
+    if (_loadingMetrics) {
+      return _summaryShell(
+        child: const SizedBox(
+          height: 80,
+          child: Center(
+            child: CircularProgressIndicator(color: Colors.white),
+          ),
+        ),
+      );
+    }
 
+    final target = _targetKcal;
+
+    // Metrics loaded but the user has no usable height/weight yet — prompt
+    // them into onboarding/profile-edit instead of showing a 0 target.
+    if (target <= 0) {
+      return _summaryShell(child: _buildNoTargetPrompt());
+    }
+
+    final progress = (_consumedKcal / target).clamp(0.0, 1.0);
+    final headerText =
+        '${_formatKcal(_consumedKcal)} / ${_formatKcal(target)} kcal';
+
+    return _summaryShell(child: _buildSummaryBody(headerText, progress));
+  }
+
+  // Shared rounded green card. Keeps the three branches above visually
+  // consistent so the layout doesn't jump as state changes.
+  Widget _summaryShell({required Widget child}) {
     return Container(
-      margin: EdgeInsets.all(24),
-      padding: EdgeInsets.all(24),
+      margin: const EdgeInsets.all(AppTheme.spacingL),
+      padding: const EdgeInsets.all(AppTheme.spacingL),
       decoration: BoxDecoration(
         color: AppTheme.primaryColor,
         borderRadius: BorderRadius.circular(24),
@@ -467,62 +481,136 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Daily Target',
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                headerText,
-                style: GoogleFonts.inter(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 15,
-              backgroundColor: Colors.black.withAlpha(51),
-              valueColor: AlwaysStoppedAnimation(Colors.white),
+      child: child,
+    );
+  }
+
+  // The "happy path" card: header row + progress bar + macro trio. Pulled
+  // out of _buildDailySummary so the loading and no-target branches can
+  // reuse the same shell without duplicating the bar layout.
+  Widget _buildSummaryBody(String headerText, double progress) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'เป้าหมายประจำวัน',
+              style: Theme.of(context).textTheme.titleMedium
+                  ?.copyWith(color: Colors.white),
             ),
+            Text(
+              headerText,
+              style: Theme.of(context).textTheme.labelMedium
+                  ?.copyWith(color: Colors.white),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppTheme.spacingS),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: LinearProgressIndicator(
+            value: progress,
+            minHeight: 15,
+            backgroundColor: Colors.black.withAlpha(51),
+            valueColor: const AlwaysStoppedAnimation(Colors.white),
           ),
-          SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildMacroItem(
-                'Carbs',
-                _consumedCarbsG,
-                _targetCarbsG,
-              ),
-              _buildMacroItem(
-                'Protein',
-                _consumedProteinG,
-                _targetProteinG,
-              ),
-              _buildMacroItem(
-                'Fat',
-                _consumedFatG,
-                _targetFatG,
-              ),
-            ],
+        ),
+        const SizedBox(height: AppTheme.spacingL),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildMacroItem('คาร์บ', _consumedCarbsG, _targetCarbsG),
+            _buildMacroItem('โปรตีน', _consumedProteinG, _targetProteinG),
+            _buildMacroItem('ไขมัน', _consumedFatG, _targetFatG),
+          ],
+        ),
+        // Surface a quiet caption when the meals fetch failed so users know
+        // why their consumed numbers might look stale. Pull-to-refresh on the
+        // outer scroll view retries the request.
+        if (_mealsError != null) ...[
+          const SizedBox(height: AppTheme.spacingS),
+          Text(
+            "โหลดมื้ออาหารวันนี้ไม่สำเร็จ — ดึงลงเพื่อรีเฟรช",
+            style: Theme.of(context).textTheme.labelSmall
+                ?.copyWith(color: Colors.white.withAlpha(204)),
           ),
         ],
-      ),
+        // Quick link into HistoryScreen, which defaults to today. Lets users
+        // see *which* foods they logged (not just the totals above) and delete
+        // mistakes in one tap. We refresh totals on return so deletions in
+        // History are reflected here without a manual pull-to-refresh.
+        const SizedBox(height: AppTheme.spacingXS),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            onPressed: _openTodayMeals,
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppTheme.spacingXS,
+                vertical: 4,
+              ),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            icon: Text(
+              "ดูมื้ออาหารวันนี้",
+              style: Theme.of(context).textTheme.labelMedium
+                  ?.copyWith(color: Colors.white, fontSize: 13),
+            ),
+            label: const Icon(Icons.arrow_forward, size: 16),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Open the History screen (which defaults to today) and refresh today's
+  // totals when we come back, so any deletions there flow into the card above.
+  Future<void> _openTodayMeals() async {
+    await Navigator.of(context).pushNamed(AppRoutes.historyRoute);
+    if (!mounted) return;
+    _loadTodayMeals();
+  }
+
+  // Shown when the user is signed in but their BodyMetrics are missing
+  // height/weight (so TDEE = 0). Tapping the button drops them into the
+  // profile-info screen where they can fill the missing values.
+  Widget _buildNoTargetPrompt() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'เป้าหมายประจำวัน',
+          style: Theme.of(context).textTheme.titleMedium
+              ?.copyWith(color: Colors.white),
+        ),
+        const SizedBox(height: AppTheme.spacingXS),
+        Text(
+          'กรอกข้อมูลโปรไฟล์ให้ครบเพื่อดูเป้าหมายประจำวันของคุณ',
+          style: Theme.of(context).textTheme.labelMedium
+              ?.copyWith(color: Colors.white, fontSize: 13),
+        ),
+        const SizedBox(height: AppTheme.spacingS),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: AppTheme.primaryDarkColor,
+            ),
+            onPressed: () => Navigator.of(context)
+                .pushNamed(AppRoutes.profileInfoRoute)
+                .then((_) {
+              // Body metrics may have changed — refresh both target and totals.
+              _loadMetrics();
+              _loadTodayMeals();
+            }),
+            child: const Text('กรอกข้อมูลโปรไฟล์'),
+          ),
+        ),
+      ],
     );
   }
 
@@ -536,21 +624,16 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         Text(
           label,
-          style: GoogleFonts.inter(
-            color: Colors.white.withAlpha(204),
-            fontSize: 12,
-          ),
+          style: Theme.of(context).textTheme.labelSmall
+              ?.copyWith(color: Colors.white.withAlpha(204)),
         ),
-        SizedBox(height: 4),
+        const SizedBox(height: 4),
         Text(
           value,
-          style: GoogleFonts.poppins(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
+          style: Theme.of(context).textTheme.titleMedium
+              ?.copyWith(color: Colors.white),
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: AppTheme.spacingXS),
 
         // Custom Small Bar
         Container(
@@ -574,4 +657,13 @@ class _HomeScreenState extends State<HomeScreen> {
       ],
     );
   }
+}
+
+// Mutable accumulator passed into _addItem so we can sum across all meals
+// in a single pass without rebuilding records.
+class _Totals {
+  double kcal = 0;
+  double carbs = 0;
+  double protein = 0;
+  double fat = 0;
 }

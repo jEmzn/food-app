@@ -58,20 +58,20 @@ class _ProfileInfoScreenState extends State<ProfileInfoScreen> {
     final newName = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Edit name'),
+        title: const Text('แก้ไขชื่อ'),
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(hintText: 'Your name'),
+          decoration: const InputDecoration(hintText: 'ชื่อของคุณ'),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: const Text('ยกเลิก'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-            child: const Text('Save'),
+            child: const Text('บันทึก'),
           ),
         ],
       ),
@@ -81,9 +81,9 @@ class _ProfileInfoScreenState extends State<ProfileInfoScreen> {
       await AuthService.updateDisplayName(newName);
       if (!mounted) return;
       setState(() {}); // FirebaseAuth.currentUser reflects the new name
-      _toast('Name updated');
+      _toast('อัปเดตชื่อแล้ว');
     } catch (e) {
-      _toast('Failed: $e');
+      _toast('ล้มเหลว: $e');
     }
   }
 
@@ -100,9 +100,9 @@ class _ProfileInfoScreenState extends State<ProfileInfoScreen> {
       await AuthService.saveBodyMetrics(updated);
       if (!mounted) return;
       setState(() => _metrics = updated);
-      _toast('Body metrics saved');
+      _toast('บันทึกข้อมูลร่างกายแล้ว');
     } catch (e) {
-      _toast('Failed to save: $e');
+      _toast('บันทึกไม่สำเร็จ: $e');
     }
   }
 
@@ -119,7 +119,7 @@ class _ProfileInfoScreenState extends State<ProfileInfoScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: Text('Profile info', style: GoogleFonts.poppins()),
+        title: Text('ข้อมูลโปรไฟล์', style: GoogleFonts.mali()),
         backgroundColor: AppTheme.backgroundColor,
         elevation: 0,
         foregroundColor: Colors.black,
@@ -132,26 +132,26 @@ class _ProfileInfoScreenState extends State<ProfileInfoScreen> {
                 padding: const EdgeInsets.all(20),
                 children: [
                   if (_loadError != null) _ErrorBanner(message: _loadError!),
-                  _SectionTitle('Account'),
+                  _SectionTitle('บัญชี'),
                   _InfoTile(
-                    label: 'Name',
+                    label: 'ชื่อ',
                     value: user?.displayName ?? '—',
                     onEdit: _editName,
                   ),
                   _InfoTile(
-                    label: 'Email',
+                    label: 'อีเมล',
                     value: user?.email ?? '—',
                     // Email change requires re-auth on Firebase; out of scope.
                     onEdit: null,
                   ),
                   const SizedBox(height: 18),
-                  _SectionTitle('Body metrics'),
+                  _SectionTitle('ข้อมูลร่างกาย'),
                   if (_metrics != null) _MetricsCard(metrics: _metrics!),
                   const SizedBox(height: 16),
                   ElevatedButton.icon(
                     onPressed: _editMetrics,
                     icon: const Icon(Icons.edit),
-                    label: const Text('Edit body metrics'),
+                    label: const Text('แก้ไขข้อมูลร่างกาย'),
                   ),
                 ],
               ),
@@ -170,7 +170,7 @@ class _SectionTitle extends StatelessWidget {
         padding: const EdgeInsets.only(bottom: 8, top: 4),
         child: Text(
           text,
-          style: GoogleFonts.poppins(
+          style: GoogleFonts.mali(
             fontSize: 18,
             fontWeight: FontWeight.w600,
             color: AppTheme.primaryDarkColor,
@@ -195,8 +195,8 @@ class _InfoTile extends StatelessWidget {
       color: Colors.white,
       elevation: 0,
       child: ListTile(
-        title: Text(label, style: GoogleFonts.inter(fontSize: 12, color: Colors.grey[600])),
-        subtitle: Text(value, style: GoogleFonts.inter(fontSize: 16, color: Colors.black)),
+        title: Text(label, style: GoogleFonts.mali(fontSize: 12, color: Colors.grey[600])),
+        subtitle: Text(value, style: GoogleFonts.mali(fontSize: 16, color: Colors.black)),
         trailing: onEdit == null
             ? null
             : IconButton(
@@ -226,15 +226,15 @@ class _MetricsCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _row('Sex', metrics.sex.name),
-            _row('Height', hasData ? '${metrics.heightCm.toStringAsFixed(0)} cm' : '—'),
-            _row('Weight', hasData ? '${metrics.weightKg.toStringAsFixed(1)} kg' : '—'),
-            _row('Date of birth', dobText),
-            _row('Activity', metrics.activityLevel.name),
-            _row('Goal', metrics.goalType.name),
+            _row('เพศ', metrics.sex.label),
+            _row('ส่วนสูง', hasData ? '${metrics.heightCm.toStringAsFixed(0)} ซม.' : '—'),
+            _row('น้ำหนัก', hasData ? '${metrics.weightKg.toStringAsFixed(1)} กก.' : '—'),
+            _row('วันเกิด', dobText),
+            _row('ระดับกิจกรรม', metrics.activityLevel.label),
+            _row('เป้าหมาย', metrics.goalType.label),
             const Divider(height: 20),
-            _row('BMI', hasData ? metrics.bmi.toStringAsFixed(1) : '—'),
-            _row('TDEE', hasData ? '${metrics.tdee.toStringAsFixed(0)} kcal/day' : '—'),
+            _row('ดัชนีมวลกาย (BMI)', hasData ? metrics.bmi.toStringAsFixed(1) : '—'),
+            _row('TDEE', hasData ? '${metrics.tdee.toStringAsFixed(0)} kcal/วัน' : '—'),
           ],
         ),
       ),
@@ -246,9 +246,9 @@ class _MetricsCard extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(k, style: GoogleFonts.inter(color: Colors.grey[700])),
+            Text(k, style: GoogleFonts.mali(color: Colors.grey[700])),
             Text(v,
-                style: GoogleFonts.inter(
+                style: GoogleFonts.mali(
                     fontWeight: FontWeight.w500, color: Colors.black)),
           ],
         ),
@@ -266,7 +266,7 @@ class _ErrorBanner extends StatelessWidget {
           color: Colors.red[50],
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Text(message, style: GoogleFonts.inter(color: Colors.red[800])),
+        child: Text(message, style: GoogleFonts.mali(color: Colors.red[800])),
       );
 }
 
@@ -332,7 +332,7 @@ class _BodyMetricsEditorState extends State<_BodyMetricsEditor> {
     final w = double.tryParse(_weight.text) ?? 0;
     if (h <= 0 || w <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter valid height and weight')),
+        const SnackBar(content: Text('กรุณากรอกส่วนสูงและน้ำหนักที่ถูกต้อง')),
       );
       return;
     }
@@ -352,7 +352,7 @@ class _BodyMetricsEditorState extends State<_BodyMetricsEditor> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: const Text('Edit body metrics'),
+        title: const Text('แก้ไขข้อมูลร่างกาย'),
         backgroundColor: AppTheme.backgroundColor,
         elevation: 0,
         foregroundColor: Colors.black,
@@ -362,9 +362,9 @@ class _BodyMetricsEditorState extends State<_BodyMetricsEditor> {
         children: [
           DropdownButtonFormField<Sex>(
             initialValue: _sex,
-            decoration: const InputDecoration(labelText: 'Sex'),
+            decoration: const InputDecoration(labelText: 'เพศ'),
             items: Sex.values
-                .map((s) => DropdownMenuItem(value: s, child: Text(s.name)))
+                .map((s) => DropdownMenuItem(value: s, child: Text(s.label)))
                 .toList(),
             onChanged: (v) => setState(() => _sex = v ?? Sex.unknown),
           ),
@@ -372,32 +372,32 @@ class _BodyMetricsEditorState extends State<_BodyMetricsEditor> {
           TextField(
             controller: _height,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: 'Height (cm)'),
+            decoration: const InputDecoration(labelText: 'ส่วนสูง (ซม.)'),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _weight,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: 'Weight (kg)'),
+            decoration: const InputDecoration(labelText: 'น้ำหนัก (กก.)'),
           ),
           const SizedBox(height: 12),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Date of birth'),
+            title: const Text('วันเกิด'),
             subtitle: Text(_dob == null
-                ? 'Not set'
+                ? 'ยังไม่ได้ตั้งค่า'
                 : '${_dob!.year}-${_dob!.month.toString().padLeft(2, '0')}-${_dob!.day.toString().padLeft(2, '0')}'),
             trailing: TextButton(
               onPressed: _pickDob,
-              child: const Text('Pick'),
+              child: const Text('เลือก'),
             ),
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<ActivityLevel>(
             initialValue: _activity,
-            decoration: const InputDecoration(labelText: 'Activity level'),
+            decoration: const InputDecoration(labelText: 'ระดับกิจกรรม'),
             items: ActivityLevel.values
-                .map((a) => DropdownMenuItem(value: a, child: Text(a.name)))
+                .map((a) => DropdownMenuItem(value: a, child: Text(a.label)))
                 .toList(),
             onChanged: (v) =>
                 setState(() => _activity = v ?? ActivityLevel.sedentary),
@@ -405,15 +405,15 @@ class _BodyMetricsEditorState extends State<_BodyMetricsEditor> {
           const SizedBox(height: 12),
           DropdownButtonFormField<GoalType>(
             initialValue: _goal,
-            decoration: const InputDecoration(labelText: 'Goal'),
+            decoration: const InputDecoration(labelText: 'เป้าหมาย'),
             items: GoalType.values
-                .map((g) => DropdownMenuItem(value: g, child: Text(g.name)))
+                .map((g) => DropdownMenuItem(value: g, child: Text(g.label)))
                 .toList(),
             onChanged: (v) =>
                 setState(() => _goal = v ?? GoalType.maintainWeight),
           ),
           const SizedBox(height: 24),
-          ElevatedButton(onPressed: _save, child: const Text('Save')),
+          ElevatedButton(onPressed: _save, child: const Text('บันทึก')),
         ],
       ),
     );

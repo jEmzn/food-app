@@ -1,3 +1,4 @@
+import 'package:app1/config/app_theme.dart';
 import 'package:flutter/material.dart';
 
 class BottomNav extends StatelessWidget {
@@ -10,116 +11,73 @@ class BottomNav extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onItemTapped;
 
-  static const Color primaryColor = Color(0xFF73CA31);
-  static const Color shadowColor = Color.fromARGB(38, 0, 0, 0);
-
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 50, left: 24, right: 24),
+      padding: const EdgeInsets.only(
+        bottom: 50,
+        left: AppTheme.spacingL,
+        right: AppTheme.spacingL,
+      ),
       child: Container(
-        padding: EdgeInsets.only(top: 10, bottom: 10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.rectangle,
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: const BoxDecoration(
+          color: AppTheme.surfaceColor,
           borderRadius: BorderRadius.all(Radius.circular(100)),
-          boxShadow: [
-            BoxShadow(
-              color: shadowColor,
-              blurRadius: 15,
-              offset: Offset(0, -3),
-            ),
-          ],
+          boxShadow: AppTheme.cardShadow,
         ),
         child: Padding(
-          padding: const EdgeInsets.only(left: 24, right: 24),
+          padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingM),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              IconButton(
-                onPressed: () {
-                  onItemTapped(0);
-                },
-                icon: Icon(
-                  Icons.home_outlined,
-                  size: 28,
-                  color: selectedIndex == 0 ? primaryColor : Colors.grey,
-                ),
-              ),
-              IconButton(
-                onPressed: () {
-                  onItemTapped(1);
-                },
-                icon: Icon(
-                  Icons.favorite_border,
-                  size: 28,
-                  color: selectedIndex == 1 ? primaryColor : Colors.grey,
-                ),
-              ),
-              IconButton(
-                onPressed: () {
-                  onItemTapped(2);
-                },
-                icon: Icon(
-                  Icons.calendar_today_outlined,
-                  size: 28,
-                  color: selectedIndex == 2 ? primaryColor : Colors.grey,
-                ),
-              ),
-              IconButton(
-                onPressed: () {
-                  onItemTapped(3);
-                },
-                icon: Icon(
-                  Icons.person_outline,
-                  size: 28,
-                  color: selectedIndex == 3 ? primaryColor : Colors.grey,
-                ),
-              ),
+              _buildItem(context, 0, Icons.home_outlined, 'หน้าแรก'),
+              _buildItem(context, 1, Icons.favorite_border, 'รายการโปรด'),
+              _buildItem(context, 2, Icons.bar_chart_outlined, 'สถิติ'),
+              _buildItem(context, 3, Icons.person_outline, 'โปรไฟล์'),
             ],
           ),
         ),
       ),
     );
   }
-}
 
-/*
-NavigationBarTheme(
-        data: NavigationBarThemeData(
-          labelTextStyle: WidgetStateProperty.all(
-            GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500),
-          ),
+  // One nav destination: icon + text label stacked vertically. The whole
+  // column is tappable. Active items use the brand accent; inactive ones
+  // are grey so the current tab stands out.
+  Widget _buildItem(
+    BuildContext context,
+    int index,
+    IconData icon,
+    String label,
+  ) {
+    final isSelected = selectedIndex == index;
+    final color = isSelected ? AppTheme.primaryColor : AppTheme.subtleText;
+
+    return InkWell(
+      onTap: () => onItemTapped(index),
+      borderRadius: BorderRadius.circular(100),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTheme.spacingXS,
+          vertical: 4,
         ),
-        child: NavigationBar(
-          selectedIndex: _selectedScreenIndex,
-          onDestinationSelected: _onItemTapped,
-          backgroundColor: Colors.white,
-          indicatorColor: const Color(0xFF73CA31),
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home, color: Color(0xFF73CA31)),
-              label: 'Home',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.favorite_outline),
-              selectedIcon: Icon(Icons.favorite, color: Color(0xFF73CA31)),
-              label: 'Favorites',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.calendar_today_outlined),
-              selectedIcon: Icon(
-                Icons.calendar_today,
-                color: Color(0xFF73CA31),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 24, color: color),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                color: color,
               ),
-              label: 'Plan',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              selectedIcon: Icon(Icons.person, color: Color(0xFF73CA31)),
-              label: 'Profile',
             ),
           ],
         ),
-      ), */
+      ),
+    );
+  }
+}

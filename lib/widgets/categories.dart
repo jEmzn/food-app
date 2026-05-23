@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:app1/config/app_theme.dart';
 
 class CategoriesWidget extends StatelessWidget {
   const CategoriesWidget({super.key});
@@ -11,35 +11,27 @@ class CategoriesWidget extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text(
-              'Categories',
-              style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w600),
-            ),
+            Text('หมวดหมู่', style: Theme.of(context).textTheme.titleLarge),
           ],
         ),
         SingleChildScrollView(
-          padding: EdgeInsets.only(top: 15, left: 15),
+          padding: const EdgeInsets.only(
+            top: AppTheme.spacingM,
+            left: AppTheme.spacingM,
+          ),
           scrollDirection: Axis.horizontal,
           child: Row(
-            spacing: 30,
+            spacing: AppTheme.spacingL,
+            // Each category now gets its own Material icon so they're visually
+            // distinct (previously all three reused meat_icon.png).
             children: [
               buildCategoriesItem(
-                'assets/images/icons/meat_icon.png',
-                'Fruits',
+                context,
+                Icons.fastfood,
+                'อาหารปรุงแต่งสำเร็จ',
               ),
-              buildCategoriesItem(
-                'assets/images/icons/meat_icon.png',
-                'Vegetables',
-              ),
-              buildCategoriesItem(
-                'assets/images/icons/meat_icon.png',
-                'Grains',
-              ),
-              buildCategoriesItem('assets/images/icons/meat_icon.png', 'Dairy'),
-              buildCategoriesItem(
-                'assets/images/icons/meat_icon.png',
-                'Proteins',
-              ),
+              buildCategoriesItem(context, Icons.cake, 'อาหารหวาน'),
+              buildCategoriesItem(context, Icons.local_drink, 'เครื่องดื่ม'),
             ],
           ),
         ),
@@ -48,41 +40,30 @@ class CategoriesWidget extends StatelessWidget {
   }
 }
 
-Widget buildCategoriesItem(String imagePath, String title) {
+Widget buildCategoriesItem(BuildContext context, IconData icon, String title) {
   return Column(
     children: [
       Container(
         width: 70,
         height: 70,
-        decoration: BoxDecoration(
-          color: Colors.white,
+        decoration: const BoxDecoration(
+          color: AppTheme.surfaceColor,
           shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Color.fromARGB(38, 0, 0, 0),
-              blurRadius: 15,
-              offset: Offset(0, 0),
-            ),
-          ],
+          boxShadow: AppTheme.cardShadow,
         ),
         child: ElevatedButton(
           onPressed: () {},
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.transparent,
-            shape: CircleBorder(),
+            shape: const CircleBorder(),
             elevation: 0,
-            padding: EdgeInsets.all(0),
+            padding: EdgeInsets.zero,
           ),
-          child: Image.asset(
-            imagePath,
-            fit: BoxFit.cover,
-            width: 32,
-            height: 32,
-          ),
+          child: Icon(icon, size: 32, color: AppTheme.primaryDarkColor),
         ),
       ),
-      SizedBox(height: 8),
-      Text(title, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+      const SizedBox(height: AppTheme.spacingXS),
+      Text(title, style: Theme.of(context).textTheme.labelMedium),
     ],
   );
 }
