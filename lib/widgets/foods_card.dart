@@ -1,29 +1,44 @@
+import 'package:app1/config/app_theme.dart';
+import 'package:app1/models/food.dart';
+import 'package:app1/screens/food_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class FoodsCard extends StatelessWidget {
   const FoodsCard({super.key});
 
+  // Mock list of recommended foods. Once the backend exposes a
+  // /recommended endpoint we'll fetch real data here. Exposed as a static
+  // field so HomeScreen can hide the "Recommended Foods" heading while this
+  // is empty (avoids a bare header above an empty row).
+  static final List<Food> recommended = <Food>[
+    // Numbers are per the listed quantity+unit (e.g. "1 medium apple").
+  ];
+
   @override
   Widget build(BuildContext context) {
-    return
-    // color: Colors,
-    SingleChildScrollView(
-      padding: EdgeInsets.only(left: 24, top: 15, bottom: 15),
+    final foods = recommended;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.only(
+        left: AppTheme.spacingL,
+        top: AppTheme.spacingM,
+        bottom: AppTheme.spacingM,
+      ),
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          buildFoodsCard('assets/images/food_image.png', 'Apple', '95', () {}),
-
-          buildFoodsCard(
-            'assets/images/food_image.png',
-            'Banana',
-            '105',
-            () {},
-          ),
-          // SizedBox(width: 15),
-          buildFoodsCard('assets/images/food_image.png', 'Orange', '62', () {}),
-          buildFoodsCard('assets/images/food_image.png', 'Orange', '62', () {}),
+          for (final food in foods)
+            buildFoodsCard(
+              food.imageUrl,
+              food.name,
+              food.kcal.round().toString(),
+              () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => FoodDetailScreen(food: food),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -36,52 +51,50 @@ Widget buildFoodsCard(
   String kcal,
   VoidCallback onPressed,
 ) {
+  // Pick the right Image widget — assets and network URLs need different ones.
+  final isNetwork =
+      imagePath.startsWith('http://') || imagePath.startsWith('https://');
+  final image = isNetwork
+      ? Image.network(
+          imagePath,
+          height: 220,
+          width: 220,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) =>
+              Image.asset(Food.placeholderImage, height: 220, width: 220),
+        )
+      : Image.asset(imagePath, height: 220, width: 220);
+
   return Container(
-    padding: const EdgeInsets.only(left: 10, right: 10),
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(16),
-      boxShadow: [
-        BoxShadow(
-          color: Color.fromARGB(20, 0, 0, 0),
-          blurRadius: 20,
-          offset: Offset(0, 0),
-        ),
-      ],
-    ),
+    padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingXS),
+    decoration: const BoxDecoration(boxShadow: AppTheme.cardShadow),
     child: ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.white,
-        minimumSize: Size(60, 60),
-        foregroundColor: Colors.black,
+        backgroundColor: AppTheme.surfaceColor,
+        minimumSize: const Size(60, 60),
+        foregroundColor: AppTheme.onSurfaceColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppTheme.spacingM),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w500),
+            style: GoogleFonts.mali(fontSize: 22, fontWeight: FontWeight.w500),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: AppTheme.spacingXS),
           Container(
-            // color: Colors.white,
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white,
+            padding: const EdgeInsets.all(AppTheme.spacingXS),
+            decoration: const BoxDecoration(
+              color: AppTheme.surfaceColor,
               borderRadius: BorderRadius.all(Radius.circular(30)),
-              boxShadow: [
-                BoxShadow(
-                  color: Color.fromARGB(38, 0, 0, 0),
-                  blurRadius: 15,
-                  offset: Offset(0, 0),
-                ),
-              ],
+              boxShadow: AppTheme.cardShadow,
             ),
             child: Text('$kcal kcal'),
           ),
-          Image.asset(imagePath, height: 220, width: 220),
+          image,
         ],
       ),
     ),

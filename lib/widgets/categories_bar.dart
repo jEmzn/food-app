@@ -12,12 +12,12 @@ class _CategoriesBarState extends State<CategoriesBar> {
   int _selectedIndex = 0;
 
   final List<String> _categories = [
-    'All',
-    'Carbs',
-    'Proteins',
-    'Fats',
-    'Vitamins',
-    'Minerals',
+    'ทั้งหมด',
+    'คาร์โบไฮเดรต',
+    'โปรตีน',
+    'ไขมัน',
+    'วิตามิน',
+    'แร่ธาตุ',
   ];
 
   @override

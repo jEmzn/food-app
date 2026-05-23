@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lessons from Food App — Learning Resource</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="layout">
+
+  <nav class="sidebar">
+    <div class="brand">Food App Lessons</div>
+    <div class="brand-sub">Real mistakes, real fixes</div>
+
+    <div class="nav-section">Get Started</div>
+    <a href="#intro">How to use this</a>
+
+    <div class="nav-section">1. Auth & Sessions</div>
+    <a href="#session-restore">Restoring sessions</a>
+    <a href="#route-guard">Protecting routes</a>
+    <a href="#partial-write">Two-system writes</a>
+    <a href="#login-fallback">Graceful degradation</a>
+
+    <div class="nav-section">2. Async UI State</div>
+    <a href="#timeouts">HTTP timeouts</a>
+    <a href="#response-check">Checking responses</a>
+    <a href="#loading-flag">Loading flags</a>
+
+    <div class="nav-section">3. Validation</div>
+    <a href="#swipe-bypass">Bypassing your own guards</a>
+    <a href="#terms-enforce">Enforcing affordances</a>
+
+    <div class="nav-section">4. Defensive Coding</div>
+    <a href="#divide-zero">Divide-by-zero</a>
+    <a href="#enum-default">Sensible defaults</a>
+
+    <div class="nav-section">5. Code Organization</div>
+    <a href="#duplicate-models">Duplicate models</a>
+    <a href="#single-source">Single source of truth</a>
+
+    <div class="nav-section">6. State & Security</div>
+    <a href="#static-state">Static UI state</a>
+    <a href="#token-logs">Don't log secrets</a>
+  </nav>
+
+  <main>
+    <header class="hero">
+      <h1>Lessons from your <span class="accent">Food App</span></h1>
+      <p>A walkthrough of the real bugs and design mistakes found while reviewing your project — and how to think about them so you avoid the same patterns in your next app.</p>
+    </header>
+
+    <div class="intro-card" id="intro">
+      <h3>How to use this guide</h3>
+      <ol>
+        <li>Each lesson is a real issue from <em>your</em> code, with file paths so you can find it.</li>
+        <li>Read the <strong>Mistake</strong> first, then think about why it might be wrong before scrolling.</li>
+        <li>Compare with <strong>The Fix</strong> and read <strong>Why It Matters</strong> to learn the principle.</li>
+        <li>The <strong>Takeaway</strong> at the bottom is the rule worth remembering — not the specific code.</li>
+      </ol>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- SECTION 1: AUTH & SESSIONS -->
+    <!-- ============================================================ -->
+    <section class="topic">
+      <h2>1. Authentication &amp; Sessions</h2>
+      <p class="topic-desc">Authentication is more than a login screen. It's about <em>state</em> — who is the user, where do they belong, what happens when something goes wrong mid-flow.</p>
+
+      <!-- Lesson: Session Restore -->
+      <article class="lesson" id="session-restore">
+        <h3>Restoring sessions on app startup</h3>
+        <div class="file-ref">lib/main.dart</div>
+
+        <h4 class="bad">🚫 The Mistake</h4>
+<pre class="bad"><code>return MaterialApp(
+  title: <span class="str">'Food App'</span>,
+  initialRoute: <span class="str">'/'</span>,  <span class="cmt">// always WelcomeScreen, even if logged in</span>
+  routes: AppRoutes.getRoutes(),
+);</code></pre>
+
+        <h4 class="why">Why It Matters</h4>
+        <p>Firebase Auth automatically persists the user's session to disk. When the app restarts, the user is still authenticated — but your app doesn't know that and forces them back to the welcome screen. Users will think they got logged out, which feels broken.</p>
+
+        <h4 class="good">✅ The Fix</h4>
+<pre class="good"><code><span class="kw">final</span> initialRoute = FirebaseAuth.instance.currentUser != <span class="kw">null</span>
+    ? AppRoutes.mainRoute
+    : AppRoutes.initialRoute;
+
+<span class="kw">return</span> MaterialApp(
+  initialRoute: initialRoute,
+  routes: AppRoutes.getRoutes(),
+);</code></pre>
+
+        <div class="takeaway">
+          <strong>Takeaway:</strong> Every authenticated app needs a startup decision based on existing auth state. Don't assume new launch = new session.
+        </div>
+      </article>
+
+      <!-- Lesson: Route Guard -->
+      <article class="lesson" id="route-guard">
+        <h3>Protecting routes that need authentication</h3>
+        <div class="file-ref">lib/screens/main_screen.dart</div>
+
+        <h4 class="bad">🚫 The Mistake</h4>
+<pre class="bad"><code><span class="kw">class</span> _MainScreenState <span class="kw">extends</span> State&lt;MainScreen&gt; {
+  <span class="kw">int</span> _selectedScreenIndex = 0;
+
+  <span class="cmt">// no check that the user is logged in!</span>
+  <span class="cmt">// any code can navigate to /main and bypass auth</span>
+}</code></pre>
+
+        <h4 class="why">Why It Matters</h4>
+        <p>If anything pushes <code>/main</code> while no Firebase user is signed in, every screen inside will try to call <code>AuthService.getToken()</code> and crash. Routes that require auth must protect themselves — don't trust the caller.</p>
+
+        <h4 class="good">✅ The Fix</h4>
+<pre class="good"><code><span class="kw">@override</span>
+<span class="kw">void</span> <span class="fn">initState</span>() {
+  <span class="kw">super</span>.initState();
+  <span class="kw">if</span> (FirebaseAuth.instance.currentUser == <span class="kw">null</span>) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      <span class="kw">if</span> (mounted) {
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          AppRoutes.initialRoute,
+          (_) => <span class="kw">false</span>,
+        );
+      }
+    });
+  }
+}</code></pre>
+
+        <div class="takeaway">
+          <strong>Takeaway:</strong> Route protection is the route's responsibility. The caller might forget — the screen itself never should.
+        </div>
+      </article>
+
+      <!-- Lesson: Two-System Writes -->
+      <article class="lesson" id="partial-write">
+        <h3>Two-system writes need a rollback plan</h3>
+        <div class="file-ref">lib/services/auth_service.dart — <code>register()</code></div>
+
+        <h4 class="bad">🚫 The Mistake</h4>
+<pre class="bad"><code><span class="kw">final</span> credential = <span class="kw">await</span> _auth.createUserWithEmailAndPassword(...);
+<span class="kw">await</span> credential.user?.updateDisplayName(name);
+
+<span class="kw">final</span> response = <span class="kw">await</span> http.post(<span class="str">'$_baseUrl/auth/register'</span>, ...);
+
+<span class="kw">if</span> (response.statusCode != 201) {
+  <span class="kw">throw</span> Exception(<span class="str">'Registration failed'</span>);
+  <span class="cmt">// Firebase account exists, backend has nothing — user is stuck!</span>
+}</code></pre>
+
+        <h4 class="why">Why It Matters</h4>
+        <p>You're writing to <strong>two systems</strong>: Firebase Auth (creates the account) and your PostgreSQL backend (stores the profile). If the second one fails, the first one already succeeded. Now the user can "log in" with Firebase but your backend has no record of them — they're in a broken half-state with no way to retry.</p>
+
+        <h4 class="good">✅ The Fix</h4>
+<pre class="good"><code><span class="kw">if</span> (response.statusCode == 201) {
+  <span class="kw">return</span> jsonDecode(response.body);
+}
+
+<span class="cmt">// Backend rejected — roll back the Firebase account so</span>
+<span class="cmt">// the user can retry cleanly.</span>
+<span class="kw">try</span> {
+  <span class="kw">await</span> user.delete();
+} <span class="kw">catch</span> (_) {}
+
+<span class="kw">throw</span> Exception(<span class="str">'Registration failed'</span>);</code></pre>
+
+        <div class="takeaway">
+          <strong>Takeaway:</strong> When operation A depends on operation B succeeding, plan the rollback for A if B fails. This pattern is called a <em>compensating action</em>.
+        </div>
+      </article>
+
+      <!-- Lesson: Login Fallback -->
+      <article class="lesson" id="login-fallback">
+        <h3>Graceful degradation when one service is down</h3>
+        <div class="file-ref">lib/services/auth_service.dart — <code>login()</code></div>
+
+        <h4 class="bad">🚫 The Mistake</h4>
+<pre class="bad"><code><span class="kw">await</span> _auth.signInWithEmailAndPassword(...);  <span class="cmt">// success</span>
+<span class="kw">final</span> response = <span class="kw">await</span> http.get(<span class="str">'$_baseUrl/auth/me'</span>, ...);
+
+<span class="kw">if</span> (response.statusCode == 200) {
+  <span class="kw">return</span> jsonDecode(response.body);
+}
+<span class="kw">throw</span> Exception(<span class="str">'Login failed'</span>);
+<span class="cmt">// Firebase says "you're logged in", but app shows error.</span>
+<span class="cmt">// User can't get past the login screen even with correct password.</span></code></pre>
+
+        <h4 class="why">Why It Matters</h4>
+        <p>Your authentication source of truth is Firebase. The backend's <code>/auth/me</code> is a <em>nice-to-have</em> (extra profile data), not the gatekeeper. If your backend is briefly down, users with valid credentials still shouldn't be locked out.</p>
+
+        <h4 class="good">✅ The Fix</h4>
+<pre class="good"><code><span class="kw">final</span> credential = <span class="kw">await</span> _auth.signInWithEmailAndPassword(...);
+<span class="kw">final</span> user = credential.user;
+
+<span class="kw">final</span> fallback = {
+  <span class="str">'id'</span>: user?.uid,
+  <span class="str">'name'</span>: user?.displayName,
+  <span class="str">'email'</span>: user?.email,
+};
+
+<span class="kw">try</span> {
+  <span class="kw">final</span> response = <span class="kw">await</span> http
+      .get(<span class="str">'$_baseUrl/auth/me'</span>, ...)
+      .timeout(<span class="kw">const</span> Duration(seconds: 10));
+  <span class="kw">if</span> (response.statusCode == 200) <span class="kw">return</span> jsonDecode(response.body);
+  <span class="kw">return</span> fallback;
+} <span class="kw">on</span> TimeoutException { <span class="kw">return</span> fallback; }
+<span class="kw">on</span> SocketException { <span class="kw">return</span> fallback; }</code></pre>
+
+        <div class="takeaway">
+          <strong>Takeaway:</strong> Identify your <em>source of truth</em> for each domain (auth = Firebase). When auxiliary services fail, degrade gracefully instead of blocking the user.
+        </div>
+      </article>
+    </section>
+
+
+    <!-- ============================================================ -->
+    <!-- SECTION 2: ASYNC UI STATE -->
+    <!-- ============================================================ -->
+    <section class="topic">
+      <h2>2. Async UI State</h2>
+      <p class="topic-desc">Most app crashes and "weird behavior" come from async code. Networks fail. Users tap buttons twice. Things take longer than expected. Plan for it.</p>
+
+      <!-- Lesson: Timeouts -->
+      <article class="lesson" id="timeouts">
+        <h3>Always set a timeout on network calls</h3>
+        <div class="file-ref">lib/services/auth_service.dart, lib/screens/auth/onboarding_screen.dart</div>
+
+        <h4 class="bad">🚫 The Mistake</h4>
+<pre class="bad"><code><span class="kw">final</span> response = <span class="kw">await</span> http.get(Uri.parse(<span class="str">'$_baseUrl/auth/me'</span>), ...);
+<span class="cmt">// no timeout — if server hangs, this hangs forever</span></code></pre>
+
+        <h4 class="why">Why It Matters</h4>
+        <p>If the server is slow, unreachable, or the user is on bad WiFi, your <code>await</code> never returns. The login spinner spins forever. The user can't dismiss it. They force-quit the app.</p>
+
+        <h4 class="good">✅ The Fix</h4>
+<pre class="good"><code><span class="kw">final</span> response = <span class="kw">await</span> http
+    .get(Uri.parse(<span class="str">'$_baseUrl/auth/me'</span>), ...)
+    .timeout(<span class="kw">const</span> Duration(seconds: 10));</code></pre>
+
+        <div class="takeaway">
+          <strong>Takeaway:</strong> Networks fail. Always set a budget. Pair every <code>await http.X(...)</code> with <code>.timeout(...)</code>.
+        </div>
+      </article>
+
+      <!-- Lesson: Check responses -->
+      <article class="lesson" id="response-check">
+        <h3>Always check the HTTP response</h3>
+        <div class="file-ref">lib/screens/auth/onboarding_screen.dart — <code>_finishOnboarding()</code></div>
+
+        <h4 class="bad">🚫 The Mistake</h4>
+<pre class="bad"><code><span class="kw">await</span> http.post(
+  Uri.parse(<span class="str">'$_baseUrl/users/body-metrics'</span>),
+  body: jsonEncode(metrics.toMap()),
+);
+
+<span class="kw">if</span> (mounted) {
+  Navigator.pushReplacementNamed(context, <span class="str">'/main'</span>);
+}
+<span class="cmt">// Response is ignored. User goes to main screen even if save failed.</span></code></pre>
+
+        <h4 class="why">Why It Matters</h4>
+        <p>Every network call has <strong>three outcomes</strong>: success (2xx), server-rejected (4xx/5xx), or no response (timeout/network error). If you don't handle each, failures become invisible — the user thinks their data was saved, but it wasn't.</p>
+
+        <h4 class="good">✅ The Fix</h4>
+<pre class="good"><code><span class="kw">try</span> {
+  <span class="kw">final</span> response = <span class="kw">await</span> http
+      .post(...)
+      .timeout(<span class="kw">const</span> Duration(seconds: 10));
+
+  <span class="kw">if</span> (response.statusCode != 200 && response.statusCode != 201) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(<span class="str">'Failed to save (${response.statusCode}).'</span>)),
+    );
+    <span class="kw">return</span>;
+  }
+  Navigator.pushReplacementNamed(context, <span class="str">'/main'</span>);
+} <span class="kw">catch</span> (e) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    <span class="kw">const</span> SnackBar(content: Text(<span class="str">'Connection error.'</span>)),
+  );
+}</code></pre>
+
+        <div class="takeaway">
+          <strong>Takeaway:</strong> Three outcomes for every network call. Handle all three. Silent failures are the worst kind of bug — users blame themselves.
+        </div>
+      </article>
+
+      <!-- Lesson: Loading flag -->
+      <article class="lesson" id="loading-flag">
+        <h3>Use a loading flag to prevent double submissions</h3>
+        <div class="file-ref">lib/screens/auth/onboarding_screen.dart</div>
+
+        <h4 class="bad">🚫 The Mistake</h4>
+<pre class="bad"><code>ElevatedButton(
+  onPressed: _nextPage,  <span class="cmt">// no busy state</span>
+  child: Text(<span class="str">'Finish'</span>),
+)
+<span class="cmt">// User taps "Finish" 3 times quickly → 3 POST requests fired.</span></code></pre>
+
+        <h4 class="why">Why It Matters</h4>
+        <p>Async operations take time. While the first tap is in flight, the button is still active. Impatient users tap again. Your server gets duplicate writes — possibly creating duplicate records or worse, partial updates that overwrite each other.</p>
+
+        <h4 class="good">✅ The Fix</h4>
+<pre class="good"><code><span class="kw">bool</span> _isSubmitting = <span class="kw">false</span>;
+
+Future&lt;<span class="kw">void</span>&gt; <span class="fn">_finishOnboarding</span>() <span class="kw">async</span> {
+  <span class="kw">if</span> (_isSubmitting) <span class="kw">return</span>;        <span class="cmt">// guard #1</span>
+  setState(() => _isSubmitting = <span class="kw">true</span>);
+  <span class="kw">try</span> {
+    <span class="kw">await</span> http.post(...);
+  } <span class="kw">finally</span> {
+    <span class="kw">if</span> (mounted) setState(() => _isSubmitting = <span class="kw">false</span>);
+  }
+}
+
+ElevatedButton(
+  onPressed: _isSubmitting ? <span class="kw">null</span> : _nextPage,  <span class="cmt">// guard #2</span>
+  child: _isSubmitting
+      ? CircularProgressIndicator(...)
+      : Text(<span class="str">'Finish'</span>),
+)</code></pre>
+
+        <div class="takeaway">
+          <strong>Takeaway:</strong> Every async button needs three things: a <em>busy flag</em>, a <em>disabled state</em>, and a <em>visual indicator</em>. Always use <code>try/finally</code> to reset the flag.
+        </div>
+      </article>
+    </section>
+
+
+    <!-- ============================================================ -->
+    <!-- SECTION 3: VALIDATION -->
+    <!-- ============================================================ -->
+    <section class="topic">
+      <h2>3. Form Validation &amp; UX</h2>
+      <p class="topic-desc">If you put a guard somewhere, make it the only path forward. Otherwise users will find the path you didn't guard.</p>
+
+      <!-- Lesson: Swipe Bypass -->
+      <article class="lesson" id="swipe-bypass">
+        <h3>Don't let users bypass your own validation</h3>
+        <div class="file-ref">lib/screens/auth/onboarding_screen.dart</div>
+
+        <h4 class="bad">🚫 The Mistake</h4>
+<pre class="bad"><code>PageView(
+  controller: _pageController,
+  onPageChanged: onPageChanged,
+  children: [_buildStep1(), _buildStep2(), _buildStep3()],
+)
+<span class="cmt">// "Next" button validates each step,</span>
+<span class="cmt">// but the user can swipe horizontally to skip!</span>
+<span class="cmt">// Then _selectedSex! crashes because it's null.</span></code></pre>
+
+        <h4 class="why">Why It Matters</h4>
+        <p>You added validation in the Next button — but <code>PageView</code> defaults allow horizontal swipes that bypass that button entirely. Users land on the Goal step with no height/weight set, then your <code>!</code> operators crash on null.</p>
+
+        <h4 class="good">✅ The Fix</h4>
+<pre class="good"><code>PageView(
+  controller: _pageController,
+  physics: <span class="kw">const</span> NeverScrollableScrollPhysics(),  <span class="cmt">// disable swipe</span>
+  onPageChanged: onPageChanged,
+  children: [...],
+)</code></pre>
+
+        <div class="takeaway">
+          <strong>Takeaway:</strong> If you put a guard somewhere (the Next button), make it the <em>only</em> path forward. Disable every other way through.
+        </div>
+      </article>
+
+      <!-- Lesson: Terms enforcement -->
+      <article class="lesson" id="terms-enforce">
+        <h3>If you show a checkbox, it must mean something</h3>
+        <div class="file-ref">lib/screens/auth/register_sheet.dart</div>
+
+        <h4 class="bad">🚫 The Mistake</h4>
+<pre class="bad"><code>Checkbox(value: _rememberMe, onChanged: ...),
+Text(<span class="str">'I agree to the Terms and Conditions'</span>),
+
+ElevatedButton(
+  onPressed: () <span class="kw">async</span> {
+    <span class="cmt">// validates name/email/password,</span>
+    <span class="cmt">// but never checks _rememberMe!</span>
+    <span class="kw">await</span> AuthService.register(...);
+  },
+  child: Text(<span class="str">'Register'</span>),
+)</code></pre>
+
+        <h4 class="why">Why It Matters</h4>
+        <p>The UI claims something the code doesn't enforce. Users think they agreed to terms; legally and ethically you're claiming the same. If the checkbox doesn't gate the action, <em>don't show it</em>.</p>
+
+        <h4 class="good">✅ The Fix</h4>
+<pre class="good"><code><span class="kw">if</span> (!_rememberMe) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    <span class="kw">const</span> SnackBar(content: Text(
+      <span class="str">'Please agree to the Terms and Conditions to continue'</span>,
+    )),
+  );
+  <span class="kw">return</span>;
+}
+<span class="kw">await</span> AuthService.register(...);</code></pre>
+
+        <div class="takeaway">
+          <strong>Takeaway:</strong> UI affordances are promises. Every button, checkbox, and input must do what it visually claims to do.
+        </div>
+      </article>
+    </section>
+
+
+    <!-- ============================================================ -->
+    <!-- SECTION 4: DEFENSIVE CODING -->
+    <!-- ============================================================ -->
+    <section class="topic">
+      <h2>4. Defensive Coding</h2>
+      <p class="topic-desc">Default values exist. Edge cases happen. The math you copy-pasted from Wikipedia doesn't know about empty form fields.</p>
+
+      <!-- Lesson: Divide by zero -->
+      <article class="lesson" id="divide-zero">
+        <h3>Guard divide-by-zero in computed properties</h3>
+        <div class="file-ref">lib/models/body_metrics.dart</div>
+
+        <h4 class="bad">🚫 The Mistake</h4>
+<pre class="bad"><code><span class="kw">final double</span> heightCm;  <span class="cmt">// defaults to 0.0</span>
+
+<span class="kw">double get</span> bmi => weightKg / ((heightCm / 100) * (heightCm / 100));
+<span class="cmt">// crashes / returns Infinity if heightCm == 0</span></code></pre>
+
+        <h4 class="why">Why It Matters</h4>
+        <p>Your model has a default value of <code>0.0</code>. The moment something constructs a <code>BodyMetrics()</code> without setting height (which the model itself allows!), reading <code>bmi</code> divides by zero. Dart returns <code>Infinity</code> rather than crashing — but that <code>Infinity</code> propagates into UI and looks like a bug to the user.</p>
+
+        <h4 class="good">✅ The Fix</h4>
+<pre class="good"><code><span class="kw">double get</span> bmi {
+  <span class="kw">if</span> (heightCm <= 0) <span class="kw">return</span> 0;
+  <span class="kw">final</span> heightM = heightCm / 100;
+  <span class="kw">return</span> weightKg / (heightM * heightM);
+}</code></pre>
+
+        <div class="takeaway">
+          <strong>Takeaway:</strong> Any division by user-provided input needs a guard. Trace your defaults through every computed property.
+        </div>
+      </article>
+
+      <!-- Lesson: Sensible enum defaults -->
+      <article class="lesson" id="enum-default">
+        <h3>Defaults must be safe, not just compilable</h3>
+        <div class="file-ref">lib/models/body_metrics.dart</div>
+
+        <h4 class="bad">🚫 The Mistake</h4>
+<pre class="bad"><code><span class="kw">double get</span> tdee {
+  <span class="kw">const</span> multipliers = {
+    ActivityLevel.sedentary: 1.2,
+    ActivityLevel.lightlyActive: 1.375,
+    <span class="cmt">// ...</span>
+  };
+  <span class="kw">return</span> bmr * (multipliers[activityLevel] ?? 0);
+  <span class="cmt">// Unknown activity → multiplier of 0 → TDEE of 0 calories</span>
+}</code></pre>
+
+        <h4 class="why">Why It Matters</h4>
+        <p>The <code>?? 0</code> compiles cleanly and silences null warnings — but a TDEE of zero kilocalories is medically nonsensical. The fallback is <em>technically valid</em> but <em>semantically wrong</em>. If this number drives a calorie display, your user sees "Goal: 0 kcal."</p>
+
+        <h4 class="good">✅ The Fix</h4>
+<pre class="good"><code><span class="kw">return</span> bmr * (multipliers[activityLevel] ?? 1.2);
+<span class="cmt">// Fall back to sedentary — a sensible, safe default</span></code></pre>
+
+        <div class="takeaway">
+          <strong>Takeaway:</strong> When you write <code>?? defaultValue</code>, ask: "If this fallback is what the user sees, does it make sense?" If not, pick a better default.
+        </div>
+      </article>
+    </section>
+
+
+    <!-- ============================================================ -->
+    <!-- SECTION 5: CODE ORGANIZATION -->
+    <!-- ============================================================ -->
+    <section class="topic">
+      <h2>5. Code Organization</h2>
+      <p class="topic-desc">Duplication is the root of drift. When you copy-paste, ask "where should this live?"</p>
+
+      <!-- Lesson: Duplicate models -->
+      <article class="lesson" id="duplicate-models">
+        <h3>Don't keep two models for the same thing</h3>
+        <div class="file-ref">lib/models/user_profile.dart vs lib/models/body_metrics.dart</div>
+
+        <h4 class="bad">🚫 The Mistake</h4>
+<pre class="bad"><code><span class="cmt">// user_profile.dart</span>
+<span class="kw">class</span> UserProfile {
+  <span class="kw">final</span> Gender gender;          <span class="cmt">// enum: unknown, male, female</span>
+  <span class="kw">double get</span> bmi => ...
+  <span class="kw">double get</span> bmr => ...
+}
+
+<span class="cmt">// body_metrics.dart  ← almost identical!</span>
+<span class="kw">class</span> BodyMetrics {
+  <span class="kw">final</span> Sex sex;                <span class="cmt">// enum: unknown, male, female</span>
+  <span class="kw">double get</span> bmi => ...
+  <span class="kw">double get</span> bmr => ...
+}</code></pre>
+
+        <h4 class="why">Why It Matters</h4>
+        <p>Two near-identical classes mean every change has to happen <strong>twice</strong>. You will forget. Bugs will appear in only one of them. Your reviewer will be confused about which is canonical. This kind of drift is one of the top sources of bugs in real codebases.</p>
+
+        <h4 class="good">✅ The Fix</h4>
+<pre class="good"><code><span class="cmt">// Delete user_profile.dart entirely.</span>
+<span class="cmt">// Use BodyMetrics everywhere.</span>
+<span class="cmt">// One model, one source of truth.</span></code></pre>
+
+        <div class="takeaway">
+          <strong>Takeaway:</strong> If two classes describe the same real-world thing, they should be one class. Refactoring duplicates early prevents drift later.
+        </div>
+      </article>
+
+      <!-- Lesson: Single source of truth -->
+      <article class="lesson" id="single-source">
+        <h3>Constants belong in one place</h3>
+        <div class="file-ref">lib/services/auth_service.dart, lib/screens/auth/onboarding_screen.dart</div>
+
+        <h4 class="bad">🚫 The Mistake</h4>
+<pre class="bad"><code><span class="cmt">// auth_service.dart</span>
+<span class="kw">static const</span> String _baseUrl = <span class="str">'http://192.168.1.13:3000'</span>;
+
+<span class="cmt">// onboarding_screen.dart  ← same value, different file</span>
+<span class="kw">static const</span> String _baseUrl = <span class="str">'http://192.168.1.13:3000'</span>;</code></pre>
+
+        <h4 class="why">Why It Matters</h4>
+        <p>When the server IP changes (and it will — production, staging, your laptop's WiFi changing), you have to remember every place this string lives. Miss one, and that screen silently calls a dead URL.</p>
+
+        <h4 class="good">✅ The Fix</h4>
+<pre class="good"><code><span class="cmt">// lib/config/api_config.dart</span>
+<span class="kw">class</span> ApiConfig {
+  <span class="kw">static const</span> String baseUrl = <span class="str">'http://192.168.1.13:3000'</span>;
+}
+
+<span class="cmt">// elsewhere</span>
+<span class="kw">import</span> <span class="str">'package:app1/config/api_config.dart'</span>;
+Uri.parse(<span class="str">'${ApiConfig.baseUrl}/auth/me'</span>);</code></pre>
+
+        <div class="takeaway">
+          <strong>Takeaway:</strong> If you ever copy-paste a constant, stop and extract it. The "rule of three" says by the third copy, you must extract — but starting at the first is even better.
+        </div>
+      </article>
+    </section>
+
+
+    <!-- ============================================================ -->
+    <!-- SECTION 6: STATE & SECURITY -->
+    <!-- ============================================================ -->
+    <section class="topic">
+      <h2>6. State &amp; Security Hygiene</h2>
+      <p class="topic-desc">Small mistakes here become big problems later when the app grows or ships to production.</p>
+
+      <!-- Lesson: Static state -->
+      <article class="lesson" id="static-state">
+        <h3>Don't use <code>static</code> for instance UI state</h3>
+        <div class="file-ref">lib/screens/auth/login_sheet.dart, register_sheet.dart</div>
+
+        <h4 class="bad">🚫 The Mistake</h4>
+<pre class="bad"><code><span class="kw">class</span> _LoginSheetState <span class="kw">extends</span> State&lt;LoginSheet&gt; {
+  <span class="kw">static bool</span> _rememberMe = <span class="kw">false</span>;  <span class="cmt">// ← static!</span>
+}</code></pre>
+
+        <h4 class="why">Why It Matters</h4>
+        <p><code>static</code> means "this variable belongs to the class, not the instance." It persists for the lifetime of the app. If a user opens the login sheet, checks the box, closes it, and reopens it — the box is still checked. State leaks across instances. This is rarely what you want for UI.</p>
+
+        <h4 class="good">✅ The Fix</h4>
+<pre class="good"><code><span class="kw">class</span> _LoginSheetState <span class="kw">extends</span> State&lt;LoginSheet&gt; {
+  <span class="kw">bool</span> _rememberMe = <span class="kw">false</span>;  <span class="cmt">// instance field</span>
+}</code></pre>
+
+        <div class="takeaway">
+          <strong>Takeaway:</strong> <code>static</code> is essentially a global variable scoped to a class. Use it only when you genuinely want shared state across all instances (constants, singletons). Never for UI checkboxes.
+        </div>
+      </article>
+
+      <!-- Lesson: Don't log secrets -->
+      <article class="lesson" id="token-logs">
+        <h3>Never log tokens, even partially</h3>
+        <div class="file-ref">lib/services/auth_service.dart</div>
+
+        <h4 class="bad">🚫 The Mistake</h4>
+<pre class="bad"><code>print(<span class="str">'[AuthService] POSTing to $_baseUrl/auth/register '</span>
+      <span class="str">'with token: ${token?.substring(0, 20)}...'</span>);</code></pre>
+
+        <h4 class="why">Why It Matters</h4>
+        <p>Logs end up in places you don't expect: ADB output that gets shared, crash analytics services, screenshots in bug reports, paste-bins on Slack. Even a <em>partial</em> token can give an attacker a foothold or be combined with other leaks. Treat tokens like passwords — never put them in plain log statements.</p>
+
+        <h4 class="good">✅ The Fix</h4>
+<pre class="good"><code><span class="cmt">// Just remove the print entirely.</span>
+<span class="cmt">// For real apps, use a logger that scrubs sensitive fields.</span></code></pre>
+
+        <div class="takeaway">
+          <strong>Takeaway:</strong> Tokens, passwords, API keys, session IDs — none of these belong in <code>print()</code> or <code>console.log()</code>. Build the discipline early.
+        </div>
+      </article>
+    </section>
+
+
+    <footer>
+      <p>This guide was generated from a code review of the Food App project.</p>
+      <p>Each lesson references the actual file where the issue was found, so you can compare your codebase before and after.</p>
+    </footer>
+
+  </main>
+</div>
+</body>
+</html>

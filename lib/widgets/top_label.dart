@@ -20,7 +20,7 @@ class TopLabel extends StatelessWidget {
       child: Text(
         textLabel,
         textAlign: TextAlign.center,
-        style: GoogleFonts.poppins(
+        style: GoogleFonts.mali(
           color: AppTheme.primarySoftColor,
           fontSize: 24,
           fontWeight: FontWeight.w600,

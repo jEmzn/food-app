@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:app1/screens/auth/login_sheet.dart';
+import 'package:app1/config/app_theme.dart';
 
 const Color fade1 = Colors.white;
 final Color fade2 = fade1.withValues(alpha: 0.63);
 final Color fade3 = fade1.withValues(alpha: 0);
-const Color buttonColor = Color(0xFF73CA31);
+const Color buttonColor = AppTheme.primaryColor;
 
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
@@ -57,8 +58,8 @@ class BottomCardLogin extends StatelessWidget {
         children: [
           SizedBox(height: 60),
           Text(
-            'Eat Well.\nLive Better',
-            style: GoogleFonts.poppins(
+            'กินดี\nอยู่ดี',
+            style: GoogleFonts.mali(
               fontSize: 36,
               fontWeight: FontWeight.w700,
             ),
@@ -66,8 +67,8 @@ class BottomCardLogin extends StatelessWidget {
           ),
           SizedBox(height: 15),
           Text(
-            'Discover the power of whole foods with a nutrition guide that fits your lifestyle, not just a diet.',
-            style: GoogleFonts.inter(),
+            'ค้นพบพลังของอาหารธรรมชาติ พร้อมคู่มือโภชนาการที่เข้ากับไลฟ์สไตล์ของคุณ ไม่ใช่แค่การลดน้ำหนัก',
+            style: GoogleFonts.mali(),
             textAlign: TextAlign.center,
           ),
           SizedBox(height: 32),
@@ -89,7 +90,7 @@ class BottomCardLogin extends StatelessWidget {
                 builder: (context) => const LoginSheet(),
               ),
             },
-            child: Text('Get Started'),
+            child: Text('เริ่มต้นใช้งาน'),
           ),
           SizedBox(height: 50),
         ],

@@ -1,3 +1,4 @@
+import 'package:app1/config/routes.dart';
 import 'package:app1/services/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -39,7 +40,7 @@ class LoginSheet extends StatefulWidget {
 }
 
 class _LoginSheetState extends State<LoginSheet> {
-  static bool _rememberMe = false;
+  bool _rememberMe = false;
   bool _isLoading = false;
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -79,18 +80,18 @@ class _LoginSheetState extends State<LoginSheet> {
                     Image.asset('assets/login_logo.png', height: 120),
                     SizedBox(height: 20),
                     Text(
-                      'Welcome to FoodApp',
+                      'ยินดีต้อนรับสู่ FoodApp',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.mali(
                         fontSize: 20,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     SizedBox(height: 5),
                     Text(
-                      'Discover delicious meals and manage your orders with ease.',
+                      'ค้นพบมื้ออาหารแสนอร่อยและจัดการคำสั่งซื้อของคุณได้อย่างง่ายดาย',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.mali(
                         fontSize: 14,
                         fontWeight: FontWeight.w400,
                         color: Colors.grey[600],
@@ -98,8 +99,8 @@ class _LoginSheetState extends State<LoginSheet> {
                     ),
                     SizedBox(height: 20),
                     Text(
-                      'Email',
-                      style: GoogleFonts.inter(
+                      'อีเมล',
+                      style: GoogleFonts.mali(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
@@ -109,8 +110,8 @@ class _LoginSheetState extends State<LoginSheet> {
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       decoration: InputDecoration(
-                        hintText: 'Enter your Email',
-                        hintStyle: GoogleFonts.inter(
+                        hintText: 'กรอกอีเมลของคุณ',
+                        hintStyle: GoogleFonts.mali(
                           fontSize: 14,
                           fontWeight: FontWeight.w400,
                           color: Colors.grey[600],
@@ -131,8 +132,8 @@ class _LoginSheetState extends State<LoginSheet> {
                     ),
                     SizedBox(height: 16),
                     Text(
-                      'Password',
-                      style: GoogleFonts.inter(
+                      'รหัสผ่าน',
+                      style: GoogleFonts.mali(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
@@ -142,8 +143,8 @@ class _LoginSheetState extends State<LoginSheet> {
                       controller: _passwordController,
                       obscureText: true,
                       decoration: InputDecoration(
-                        hintText: 'Enter your Password',
-                        hintStyle: GoogleFonts.inter(
+                        hintText: 'กรอกรหัสผ่านของคุณ',
+                        hintStyle: GoogleFonts.mali(
                           fontSize: 14,
                           fontWeight: FontWeight.w400,
                           color: Colors.grey[600],
@@ -182,8 +183,8 @@ class _LoginSheetState extends State<LoginSheet> {
                           },
                         ),
                         Text(
-                          'Remember Me',
-                          style: GoogleFonts.inter(
+                          'จดจำฉัน',
+                          style: GoogleFonts.mali(
                             fontSize: 12,
                             fontWeight: FontWeight.w400,
                             color: Colors.grey[600],
@@ -191,10 +192,44 @@ class _LoginSheetState extends State<LoginSheet> {
                         ),
                         Spacer(),
                         TextButton(
-                          onPressed: () => {},
+                          onPressed: () async {
+                            final email = _emailController.text.trim();
+                            if (email.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'กรุณากรอกอีเมลด้านบนก่อน แล้วจึงแตะลืมรหัสผ่าน',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+                            try {
+                              await AuthService.sendPasswordReset(email);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'ส่งอีเมลรีเซ็ตรหัสผ่านแล้ว กรุณาตรวจสอบกล่องจดหมายของคุณ',
+                                    ),
+                                  ),
+                                );
+                              }
+                            } on FirebaseAuthException catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      AuthService.friendlyError(e),
+                                    ),
+                                  ),
+                                );
+                              }
+                            }
+                          },
                           child: Text(
-                            'forgot Password?',
-                            style: GoogleFonts.inter(
+                            'ลืมรหัสผ่าน?',
+                            style: GoogleFonts.mali(
                               fontSize: 12,
                               fontWeight: FontWeight.w400,
                               color: AppTheme.primaryColor,
@@ -211,7 +246,7 @@ class _LoginSheetState extends State<LoginSheet> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30),
                         ),
-                        textStyle: GoogleFonts.inter(fontSize: 16),
+                        textStyle: GoogleFonts.mali(fontSize: 16),
                         minimumSize: Size(double.infinity, 50),
                       ),
                       onPressed: _isLoading
@@ -222,7 +257,7 @@ class _LoginSheetState extends State<LoginSheet> {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text(
-                                      'Please enter your email and password',
+                                      'กรุณากรอกอีเมลและรหัสผ่าน',
                                     ),
                                   ),
                                 );
@@ -234,9 +269,37 @@ class _LoginSheetState extends State<LoginSheet> {
                                   _emailController.text.trim(),
                                   _passwordController.text,
                                 );
+                                // Send users with no/incomplete metrics to
+                                // onboarding; otherwise straight to the app.
+                                // On network failure, fall through to /main —
+                                // the home screen handles the missing-target
+                                // state gracefully.
+                                String nextRoute = AppRoutes.mainRoute;
+                                try {
+                                  final metrics =
+                                      await AuthService.fetchBodyMetrics();
+                                  debugPrint(
+                                    '[login] metrics=$metrics needsOnboarding='
+                                    '${AuthService.bodyMetricsNeedOnboarding(metrics)}',
+                                  );
+                                  if (AuthService.bodyMetricsNeedOnboarding(
+                                    metrics,
+                                  )) {
+                                    nextRoute = AppRoutes.onboardRoute;
+                                  }
+                                } catch (e) {
+                                  debugPrint(
+                                    '[login] fetchBodyMetrics failed: $e — '
+                                    'routing to onboarding to be safe',
+                                  );
+                                  // If we can't tell, send the user to
+                                  // onboarding rather than the empty home —
+                                  // they can re-enter and it will be saved.
+                                  nextRoute = AppRoutes.onboardRoute;
+                                }
                                 if (context.mounted) {
                                   Navigator.pop(context);
-                                  Navigator.pushNamed(context, '/main');
+                                  Navigator.pushNamed(context, nextRoute);
                                 }
                               } on FirebaseAuthException catch (e) {
                                 if (context.mounted) {
@@ -273,7 +336,7 @@ class _LoginSheetState extends State<LoginSheet> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Text('Login'),
+                          : const Text('เข้าสู่ระบบ'),
                     ),
                     SizedBox(height: 32),
                     Row(
@@ -284,9 +347,9 @@ class _LoginSheetState extends State<LoginSheet> {
                         Padding(
                           padding: EdgeInsets.symmetric(horizontal: 8),
                           child: (Text(
-                            'Or continue with',
+                            'หรือดำเนินการต่อด้วย',
                             textAlign: TextAlign.center,
-                            style: GoogleFonts.inter(
+                            style: GoogleFonts.mali(
                               fontSize: 12,
                               color: Colors.grey[600],
                             ),
@@ -335,8 +398,8 @@ class _LoginSheetState extends State<LoginSheet> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'Don\'t have an account?',
-                      style: GoogleFonts.inter(
+                      'ยังไม่มีบัญชี?',
+                      style: GoogleFonts.mali(
                         fontSize: 12,
                         color: Colors.grey[600],
                       ),
@@ -353,8 +416,8 @@ class _LoginSheetState extends State<LoginSheet> {
                         ),
                       },
                       child: Text(
-                        'Sign up',
-                        style: GoogleFonts.inter(
+                        'สมัครสมาชิก',
+                        style: GoogleFonts.mali(
                           fontSize: 12,
                           color: AppTheme.primaryColor,
                         ),

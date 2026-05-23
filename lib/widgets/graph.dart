@@ -12,6 +12,14 @@ class GraphWidget extends StatelessWidget {
   final List<String> labels;
   final int kcal;
   final int weekday;
+
+  // Per-day macro amounts, one entry per weekday and index-aligned with
+  // [labels]/[valueData]. Each inner list is [carbs, protein, fat] expressed
+  // in the SAME unit (this app passes calorie contributions). The values do
+  // NOT need to sum to anything — buildNutitionBar normalises them into the
+  // stacked bar's shares. Pass [0, 0, 0] for a day with no food.
+  final List<List<double>> macroData;
+
   final double sideTextHeight;
   final double sideTextSize;
 
@@ -27,6 +35,7 @@ class GraphWidget extends StatelessWidget {
     required this.labels,
     required this.kcal,
     required this.weekday,
+    required this.macroData,
     this.sideTextHeight = 16,
     this.sideTextSize = 12,
   });
@@ -52,32 +61,30 @@ class GraphWidget extends StatelessWidget {
     );
     final double maxGraphLevel = levelKcal.last.toDouble();
     final double topSize = 30;
-    const List<String> nutrition = ['carp', 'protein', 'fat'];
-    const List<Color> nutritionColor = [Colors.amber, Colors.blue, Colors.red];
+    const List<String> nutrition = ['คาร์บ', 'โปรตีน', 'ไขมัน'];
+    const List<Color> nutritionColor = [
+      AppTheme.macroCarbsColor,
+      AppTheme.macroProteinColor,
+      AppTheme.macroFatColor,
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Calorie Bar Graph
         Text(
-          'Calories (kcal)',
-          style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w600),
+          'แคลอรี (kcal)',
+          style: Theme.of(context).textTheme.titleLarge,
         ),
-        SizedBox(height: 16),
+        const SizedBox(height: AppTheme.spacingM),
         Container(
           padding: EdgeInsets.all(padding),
           height: heightWidget,
           width: double.infinity,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppTheme.surfaceColor,
             borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.shadowColor,
-                blurRadius: 15,
-                offset: Offset(0, 0),
-              ),
-            ],
+            boxShadow: AppTheme.cardShadow,
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -87,13 +94,16 @@ class GraphWidget extends StatelessWidget {
                 width: 40,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: List.generate(labels.length, (index) {
+                  // One label per gridline level (countLevel), not per weekday.
+                  // Using labels.length here crashed when countLevel < 7 because
+                  // levelKcal only has countLevel entries.
+                  children: List.generate(countLevel, (index) {
                     if (index == countLevel - 1) {
                       return SizedBox(
                         height: sideTextHeight,
                         child: Text(
                           ' ',
-                          style: GoogleFonts.inter(fontSize: sideTextSize),
+                          style: GoogleFonts.mali(fontSize: sideTextSize),
                         ),
                       );
                     }
@@ -101,7 +111,7 @@ class GraphWidget extends StatelessWidget {
                       height: sideTextHeight,
                       child: Text(
                         levelKcal[countLevel - index - 1].toString(),
-                        style: GoogleFonts.inter(fontSize: sideTextSize),
+                        style: GoogleFonts.mali(fontSize: sideTextSize),
                       ),
                     );
                   }),
@@ -181,7 +191,7 @@ class GraphWidget extends StatelessWidget {
                                   child: Text(
                                     labels[index],
                                     textAlign: TextAlign.center,
-                                    style: GoogleFonts.inter(
+                                    style: GoogleFonts.mali(
                                       fontSize: sideTextSize,
                                     ),
                                   ),
@@ -199,27 +209,18 @@ class GraphWidget extends StatelessWidget {
             ],
           ),
         ),
-        SizedBox(height: 16),
-        Text(
-          'Nutrition (%)',
-          style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w600),
-        ),
-        SizedBox(height: 16),
+        const SizedBox(height: AppTheme.spacingM),
+        Text('สารอาหาร (%)', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: AppTheme.spacingM),
         // Nutrition info
         Container(
           padding: EdgeInsets.all(padding),
           height: heightWidget,
           width: double.infinity,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppTheme.surfaceColor,
             borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.shadowColor,
-                blurRadius: 15,
-                offset: Offset(0, 0),
-              ),
-            ],
+            boxShadow: AppTheme.cardShadow,
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -237,7 +238,7 @@ class GraphWidget extends StatelessWidget {
                           height: sideTextHeight,
                           child: Text(
                             ' ',
-                            style: GoogleFonts.inter(fontSize: sideTextSize),
+                            style: GoogleFonts.mali(fontSize: sideTextSize),
                           ),
                         );
                       }
@@ -245,7 +246,7 @@ class GraphWidget extends StatelessWidget {
                         height: sideTextHeight,
                         child: Text(
                           '${(4 - index) * 25}',
-                          style: GoogleFonts.inter(fontSize: sideTextSize),
+                          style: GoogleFonts.mali(fontSize: sideTextSize),
                         ),
                       );
                     }),
@@ -309,7 +310,7 @@ class GraphWidget extends StatelessWidget {
                                     ),
                                     Text(
                                       nutrition[index],
-                                      style: GoogleFonts.inter(
+                                      style: GoogleFonts.mali(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w400,
                                       ),
@@ -329,8 +330,9 @@ class GraphWidget extends StatelessWidget {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: List.generate(valueData.length, (index) {
-                              return buildNutitionBar(0.5, 0.3, 0.2);
+                            children: List.generate(macroData.length, (index) {
+                              final m = macroData[index];
+                              return buildNutitionBar(m[0], m[1], m[2]);
                             }),
                           ),
                         ),
@@ -347,7 +349,7 @@ class GraphWidget extends StatelessWidget {
                                   child: Text(
                                     labels[index],
                                     textAlign: TextAlign.center,
-                                    style: GoogleFonts.inter(
+                                    style: GoogleFonts.mali(
                                       fontSize: sideTextSize,
                                     ),
                                   ),
@@ -369,6 +371,9 @@ class GraphWidget extends StatelessWidget {
     );
   }
 
+  // Renders one day's macro split as a full-height stacked bar (carbs on top,
+  // then protein, then fat). The three inputs are amounts in any shared unit;
+  // we normalise them into shares here so the segments always fill the bar.
   Widget buildNutitionBar(double carb, double protein, double fat) {
     final double padding = 12;
     final double heightWidget = 336;
@@ -378,16 +383,25 @@ class GraphWidget extends StatelessWidget {
 
     final double barHeight = heightGraphArea - sideTextHeight - 30;
 
-    if (carb + protein + fat != 1) {
-      return Container();
+    final double total = carb + protein + fat;
+    // No food logged that day: render an empty slot the width of a bar so the
+    // weekday labels below stay aligned with the (missing) bar.
+    if (total <= 0) {
+      return SizedBox(width: maxBarWidth);
     }
+
+    // Convert raw amounts into 0..1 shares of the day's total.
+    final double carbShare = carb / total;
+    final double proteinShare = protein / total;
+    final double fatShare = fat / total;
+
     return Column(
       children: [
         Container(
           width: maxBarWidth,
-          height: barHeight * carb,
+          height: barHeight * carbShare,
           decoration: BoxDecoration(
-            color: Colors.amber.withAlpha(120),
+            color: AppTheme.macroCarbsColor,
             borderRadius: BorderRadius.only(
               topLeft: Radius.circular(16),
               topRight: Radius.circular(16),
@@ -396,13 +410,13 @@ class GraphWidget extends StatelessWidget {
         ),
         Container(
           width: maxBarWidth,
-          height: barHeight * protein,
-          decoration: BoxDecoration(color: Colors.blue.withAlpha(120)),
+          height: barHeight * proteinShare,
+          decoration: const BoxDecoration(color: AppTheme.macroProteinColor),
         ),
         Container(
           width: maxBarWidth,
-          height: barHeight * fat,
-          decoration: BoxDecoration(color: Colors.red.withAlpha(120)),
+          height: barHeight * fatShare,
+          decoration: const BoxDecoration(color: AppTheme.macroFatColor),
         ),
       ],
     );
