@@ -36,9 +36,10 @@ class RecipeApiException implements Exception {
   String toString() => message;
 }
 
-/// Talks to the recipe / food endpoints. Both `/recipes/suggest` and
-/// `/recipes/search` are protected — they require a Firebase ID token
-/// attached as `Authorization: Bearer <token>`. See [_authedGet] for the
+/// Talks to the recipe / food endpoints: `/recipes/suggest` and
+/// `/recipes/search` (DB-only) and `/recipes/ai-search` (explicit AI). All
+/// are protected — they require a Firebase ID token attached as
+/// `Authorization: Bearer <token>`. See [_authedGet] for the
 /// auto-refresh-on-401 logic.
 class FoodApiService {
   // Use the shared ApiConfig base URL so we don't drift across services.
@@ -87,25 +88,23 @@ class FoodApiService {
 
   /// `GET /recipes/suggest?query=<text>`
   ///
-  /// Returns up to ~5 specific Thai dish names that disambiguate a vague
-  /// query like "ต้มยำ" into "ต้มยำกุ้งน้ำข้น", "ต้มยำไก่", etc. These are
-  /// *candidates only* — they have no nutrition data. The user picks one,
-  /// then we call [searchRecipe] with the chosen `food_name`.
+  /// DATABASE-ONLY autocomplete. Returns up to ~5 dish names already stored
+  /// in the food catalog whose name contains [query]. This used to call the
+  /// AI to disambiguate vague queries; that behavior was removed — these are
+  /// now plain DB matches with real, already-saved nutrition behind them.
   ///
-  /// Returns an empty list when the backend has nothing to suggest. Throws
-  /// [RecipeApiException] for known AI error codes so the caller can show
-  /// a localized message.
+  /// The user picks one, then we call [searchRecipe] (also DB-only) to load
+  /// it. For foods that aren't in the DB yet, the UI offers an explicit
+  /// "search with AI" action ([aiSearchRecipe]).
+  ///
+  /// Returns an empty list when nothing matches. Throws [RecipeApiException]
+  /// for non-200 responses so the caller can show a localized message.
   Future<List<FoodSuggestion>> suggestRecipes(String query) async {
     final uri = Uri.parse('$_baseUrl/recipes/suggest')
         .replace(queryParameters: {'query': query});
     final response = await _authedGet(uri);
 
-    if (response.statusCode == 429) {
-      throw RecipeApiException(429, 'ลองใหม่อีกครั้ง (AI กำลังถูกใช้งานหนัก)');
-    }
-    if (response.statusCode == 502) {
-      throw RecipeApiException(502, 'AI ส่งข้อมูลผิดรูปแบบ ลองพิมพ์ใหม่');
-    }
+    // DB-only endpoint — no AI rate-limit / bad-JSON codes to handle here.
     if (response.statusCode == 404) return const [];
     if (response.statusCode != 200) {
       throw RecipeApiException(
@@ -116,12 +115,6 @@ class FoodApiService {
     if (response.body.isEmpty) return const [];
 
     final decoded = json.decode(response.body);
-
-    // TEMP DEBUG: print the raw shape so we can see what the backend
-    // actually returns. Remove once parsing is verified.
-    // ignore: avoid_print
-    print('[suggestRecipes] raw response: ${response.body}');
-
     if (decoded is! Map) return const [];
 
     // Try top-level `suggestions` first (per spec), then fall back to
@@ -141,20 +134,48 @@ class FoodApiService {
         .toList();
   }
 
-  /// `GET /recipes/search?query=<text>`
+  /// `GET /recipes/search?query=<text>` — DATABASE-ONLY lookup.
   ///
-  /// Returns one [Food] (the endpoint resolves a single best match — it's
-  /// not an autocomplete that returns multiple suggestions). Returns null
-  /// if the backend gives a 404 or empty body.
+  /// Resolves a single dish by exact (case-insensitive) name from the food
+  /// catalog. There is NO AI fallback: if the dish isn't in the DB the
+  /// backend replies 404, and this method returns null. A null result means
+  /// "not in the database yet" — the caller should then offer the user an
+  /// explicit AI search via [aiSearchRecipe].
   ///
   /// The backend serialises numeric fields as strings ("250", "20"), so the
   /// JSON parsing happens inside [Food.fromCatalogJson] rather than here.
-  /// Heads-up: AI-generated rows currently include an `image_url` pointing
-  /// at `localhost:3000/static/...` — that won't load from a phone/emulator
-  /// on the LAN. The Food model falls back to the bundled placeholder if
-  /// the network image fails.
   Future<Food?> searchRecipe(String query) async {
     final uri = Uri.parse('$_baseUrl/recipes/search')
+        .replace(queryParameters: {'query': query});
+    final response = await _authedGet(uri);
+
+    // 404 = not found in DB. Caller decides whether to offer AI search.
+    if (response.statusCode == 404) return null;
+    if (response.statusCode != 200) {
+      throw RecipeApiException(
+        response.statusCode,
+        'เกิดข้อผิดพลาด (${response.statusCode})',
+      );
+    }
+    if (response.body.isEmpty) return null;
+
+    return _parseFoodResponse(response.body);
+  }
+
+  /// `GET /recipes/ai-search?query=<text>` — EXPLICIT AI search.
+  ///
+  /// This is the ONLY method that triggers the (paid) AI nutrition lookup,
+  /// and it should only be called from a deliberate user action — e.g. the
+  /// "ค้นหาด้วย AI" button — never automatically as a fallback.
+  ///
+  /// The backend returns AI-estimated nutrition + an image but does NOT save
+  /// it to the database. So the returned [Food] is transient: it exists only
+  /// for this session unless the user later chooses to log/save it.
+  ///
+  /// Returns null on an empty body. Throws [RecipeApiException] for the AI
+  /// error codes (429 busy, 502 bad response) so the UI can localize them.
+  Future<Food?> aiSearchRecipe(String query) async {
+    final uri = Uri.parse('$_baseUrl/recipes/ai-search')
         .replace(queryParameters: {'query': query});
     final response = await _authedGet(uri);
 
@@ -173,7 +194,14 @@ class FoodApiService {
     }
     if (response.body.isEmpty) return null;
 
-    final decoded = json.decode(response.body);
+    return _parseFoodResponse(response.body);
+  }
+
+  /// Shared parser for the `{ data: {...} }` envelope returned by both
+  /// `/recipes/search` and `/recipes/ai-search`. Returns null if the shape
+  /// isn't what we expect.
+  Food? _parseFoodResponse(String body) {
+    final decoded = json.decode(body);
     if (decoded is! Map<String, dynamic>) return null;
     final data = decoded['data'];
     if (data is! Map) return null;
@@ -183,5 +211,4 @@ class FoodApiService {
     final typed = data.map((k, v) => MapEntry(k.toString(), v));
     return Food.fromCatalogJson(typed);
   }
-
 }

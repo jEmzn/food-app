@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:app1/config/api_config.dart';
 import 'package:app1/services/auth_service.dart';
+import 'package:app1/services/cache/request_cache.dart';
 import 'package:http/http.dart' as http;
 
 /// Wraps the /meals endpoints. All calls require a Firebase ID token,
@@ -14,11 +15,30 @@ class MealsService {
   /// Returns the raw list as decoded JSON. We keep it untyped because the
   /// backend response shape may evolve and the History screen only needs
   /// a few common fields.
+  ///
+  /// Cached in-memory for 5 minutes per date (key `meals:<YYYY-MM-DD>`) so
+  /// switching tabs / re-rendering doesn't re-hit the backend. Pass
+  /// [forceRefresh] (pull-to-refresh) to bypass a fresh cache entry. The cache
+  /// is invalidated automatically by [addMeal] / [deleteMeal].
   static Future<List<Map<String, dynamic>>> getMealsForDate(
-    DateTime date,
+    DateTime date, {
+    bool forceRefresh = false,
+  }) {
+    final iso = _isoDate(date);
+    return RequestCache.instance.getOrFetch<List<Map<String, dynamic>>>(
+      'meals:$iso',
+      ttl: const Duration(minutes: 5),
+      forceRefresh: forceRefresh,
+      fetch: () => _fetchMealsForDate(iso),
+    );
+  }
+
+  /// The real network call behind [getMealsForDate]. Takes the already-computed
+  /// ISO date string.
+  static Future<List<Map<String, dynamic>>> _fetchMealsForDate(
+    String iso,
   ) async {
     final token = await AuthService.getToken();
-    final iso = _isoDate(date);
     final http.Response response;
     try {
       response = await http
@@ -141,6 +161,10 @@ class MealsService {
           'เพิ่มมื้ออาหารไม่สำเร็จ (${response.statusCode}): ${response.body}',
         );
       }
+      // Success: this day's meals AND its recommendations are now stale.
+      final iso = _isoDate(date);
+      RequestCache.instance.invalidate('meals:$iso');
+      RequestCache.instance.invalidate('recs:$iso');
     } on TimeoutException {
       throw Exception('เซิร์ฟเวอร์ตอบสนองช้า กรุณาลองใหม่อีกครั้ง');
     } on SocketException {
@@ -164,6 +188,11 @@ class MealsService {
           'ลบมื้ออาหารไม่สำเร็จ (${response.statusCode}): ${response.body}',
         );
       }
+      // We only get the meal id here, not its date, so we can't compute a
+      // single cache key. Clearing all meal/recommendation entries is cheap and
+      // guarantees the deleted meal won't linger in any cached date.
+      RequestCache.instance.invalidatePrefix('meals:');
+      RequestCache.instance.invalidatePrefix('recs:');
     } on TimeoutException {
       throw Exception('เซิร์ฟเวอร์ตอบสนองช้า กรุณาลองใหม่อีกครั้ง');
     } on SocketException {

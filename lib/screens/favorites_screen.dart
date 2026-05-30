@@ -1,6 +1,7 @@
 import 'package:app1/config/app_theme.dart';
 import 'package:app1/models/food.dart';
 import 'package:app1/screens/food_detail_screen.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:app1/services/favorites_service.dart';
 import 'package:app1/widgets/top_label.dart';
 import 'package:flutter/material.dart';
@@ -178,7 +179,7 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
         decoration: BoxDecoration(
           image: DecorationImage(
             image: isNetwork
-                ? NetworkImage(url) as ImageProvider
+                ? CachedNetworkImageProvider(url) as ImageProvider
                 : AssetImage(url),
             fit: BoxFit.cover,
             // If the network image fails, the box still has a color behind it.

@@ -1,10 +1,12 @@
 import 'package:app1/config/app_theme.dart';
 import 'package:app1/config/routes.dart';
 import 'package:app1/models/body_metrics.dart';
+import 'package:app1/models/food.dart';
 import 'package:app1/screens/food_detail_screen.dart';
 import 'package:app1/services/api_service.dart';
 import 'package:app1/services/auth_service.dart';
 import 'package:app1/services/meals_service.dart';
+import 'package:app1/services/recommendations_service.dart';
 import 'package:app1/widgets/foods_card.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -40,11 +42,36 @@ class _HomeScreenState extends State<HomeScreen> {
   // instead of silently displaying zeros. Null = no error / not loaded yet.
   String? _mealsError;
 
+  // Foods recommended for what the user has room to eat today, from
+  // GET /recommendations. Stays empty when the backend has nothing to suggest
+  // (no body metrics yet, or already over budget) — which hides the section.
+  List<Food> _recommended = [];
+
   @override
   void initState() {
     super.initState();
     _loadMetrics();
     _loadTodayMeals();
+    _loadRecommended();
+  }
+
+  // Fetch today's recommendations. On any error we keep the list empty so the
+  // section simply stays hidden — recommendations are a nice-to-have, not
+  // something worth showing an error for.
+  Future<void> _loadRecommended({bool forceRefresh = false}) async {
+    try {
+      final foods = await RecommendationsService.getRecommendations(
+        date: DateTime.now(),
+        forceRefresh: forceRefresh,
+      );
+      if (!mounted) return;
+      setState(() => _recommended = foods);
+    } catch (e) {
+      // ignore: avoid_print
+      print('[home] _loadRecommended failed: $e');
+      if (!mounted) return;
+      setState(() => _recommended = []);
+    }
   }
 
   // Sum calories + macros across every meal logged today.
@@ -57,9 +84,12 @@ class _HomeScreenState extends State<HomeScreen> {
   //
   // On failure we capture the error in [_mealsError] so the Daily Target card
   // can show a small caption — better than silently rendering zeros.
-  Future<void> _loadTodayMeals() async {
+  Future<void> _loadTodayMeals({bool forceRefresh = false}) async {
     try {
-      final meals = await MealsService.getMealsForDate(DateTime.now());
+      final meals = await MealsService.getMealsForDate(
+        DateTime.now(),
+        forceRefresh: forceRefresh,
+      );
 
       // TEMP DEBUG: print the raw shape so we can confirm what the backend
       // returns. Remove before production cut (CLAUDE.md pre-commit checklist).
@@ -115,9 +145,55 @@ class _HomeScreenState extends State<HomeScreen> {
     return 0;
   }
 
-  Future<void> _loadMetrics() async {
+  // Fetch a Food (via [fetch]) and, if found, push the detail screen. Shared
+  // by both the DB-result tiles and the explicit "search with AI" button so
+  // the navigation + error handling lives in one place.
+  //
+  // [fetch] is a callback (not a ready Food) so the network call only runs
+  // when this method runs — and any RecipeApiException it throws is caught
+  // here and shown as a SnackBar.
+  Future<void> _openFood(
+    BuildContext context,
+    Future<Food?> Function() fetch,
+  ) async {
     try {
-      final metrics = await AuthService.fetchBodyMetrics();
+      final food = await fetch();
+      if (!context.mounted) return;
+      if (food == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('ไม่พบข้อมูลอาหาร')),
+        );
+        return;
+      }
+      // Await the route so we can refresh today's totals when the user pops
+      // back after logging this meal.
+      final added = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(builder: (_) => FoodDetailScreen(food: food)),
+      );
+      if (added == true && mounted) {
+        // Logging a meal changes the remaining macros, so refresh both today's
+        // totals and the recommendations that depend on them.
+        _loadTodayMeals();
+        _loadRecommended();
+      }
+    } on RecipeApiException catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('ข้อผิดพลาด: $e')));
+    }
+  }
+
+  Future<void> _loadMetrics({bool forceRefresh = false}) async {
+    try {
+      final metrics = await AuthService.fetchBodyMetrics(
+        forceRefresh: forceRefresh,
+      );
       if (mounted) {
         setState(() {
           _metrics = metrics;
@@ -178,7 +254,12 @@ class _HomeScreenState extends State<HomeScreen> {
   // Pull-to-refresh handler. Reloads both the body metrics (target may have
   // changed in another tab) and today's meal totals.
   Future<void> _refresh() async {
-    await Future.wait([_loadMetrics(), _loadTodayMeals()]);
+    // Manual pull-to-refresh always bypasses the cache and re-hits the network.
+    await Future.wait([
+      _loadMetrics(forceRefresh: true),
+      _loadTodayMeals(forceRefresh: true),
+      _loadRecommended(forceRefresh: true),
+    ]);
   }
 
   @override
@@ -293,11 +374,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                   final query = controller.text.trim();
                                   if (query.isEmpty) return const <Widget>[];
 
-                                  // Debounce ~300ms: SearchAnchor invokes this
+                                  // Debounce ~1s: SearchAnchor invokes this
                                   // builder on every keystroke, so we wait a
                                   // beat and bail if the user typed more in
-                                  // the meantime. Saves a lot of wasted AI
-                                  // calls on slow cache-miss queries.
+                                  // the meantime. Saves a lot of wasted DB
+                                  // suggest calls while the user is still typing.
                                   await Future<void>.delayed(
                                     const Duration(milliseconds: 1000), 
                                   );
@@ -305,10 +386,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                     return const <Widget>[];
                                   }
 
-                                  // Step 1: get the list of specific dish
-                                  // candidates from /recipes/suggest. We
-                                  // cache per-query so repeat lookups are
-                                  // instant.
+                                  // Step 1: get matching dishes that ALREADY
+                                  // exist in the database from /recipes/suggest
+                                  // (DB-only now — no AI). We cache per-query so
+                                  // repeat lookups are instant.
                                   List<FoodSuggestion> suggestions;
                                   try {
                                     final cached = _suggestionCache[query];
@@ -327,76 +408,69 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ];
                                   }
 
-                                  if (suggestions.isEmpty) {
-                                    return [
-                                      const ListTile(
-                                        title: Text('ไม่พบเมนูที่ตรง'),
+                                  final tiles = <Widget>[];
+
+                                  // Step 2: render each DB match as a tile.
+                                  // Tapping loads the full Food via
+                                  // /recipes/search (DB-only) using the
+                                  // canonical food_name, then opens the detail
+                                  // screen. These always resolve because they
+                                  // came from the DB in the first place.
+                                  for (final s in suggestions) {
+                                    tiles.add(
+                                      ListTile(
+                                        leading: const Icon(
+                                          Icons.restaurant,
+                                          color: AppTheme.primaryHardColor,
+                                        ),
+                                        title: Text(s.foodName),
+                                        subtitle: s.nameEn.isNotEmpty
+                                            ? Text(s.nameEn)
+                                            : null,
+                                        onTap: () => _openFood(
+                                          context,
+                                          () => FoodApiService()
+                                              .searchRecipe(s.foodName),
+                                        ),
                                       ),
-                                    ];
+                                    );
                                   }
 
-                                  // Step 2: render each candidate as a tile.
-                                  // Tapping fetches the full Food via
-                                  // /recipes/search using the *canonical*
-                                  // food_name (not the user's raw text) so
-                                  // nutrition + image come from the same key.
-                                  // Note: with 1 result the user still taps
-                                  // once — that's effectively the same UX
-                                  // as before for already-specific queries.
-                                  return suggestions.map((s) {
-                                    return ListTile(
+                                  // No DB match? Tell the user plainly. The AI
+                                  // option below is still offered.
+                                  if (suggestions.isEmpty) {
+                                    tiles.add(
+                                      const ListTile(
+                                        dense: true,
+                                        title: Text('ไม่พบเมนูในฐานข้อมูล'),
+                                      ),
+                                    );
+                                  }
+
+                                  // Step 3: the EXPLICIT "search with AI" action.
+                                  // This is the ONLY way AI runs now — it never
+                                  // happens automatically. Tapping calls
+                                  // /recipes/ai-search with the user's raw query;
+                                  // the result is shown but NOT saved to the DB.
+                                  tiles.add(
+                                    ListTile(
                                       leading: const Icon(
-                                        Icons.restaurant,
+                                        Icons.auto_awesome,
                                         color: AppTheme.primaryHardColor,
                                       ),
-                                      title: Text(s.foodName),
-                                      subtitle: s.nameEn.isNotEmpty
-                                          ? Text(s.nameEn)
-                                          : null,
-                                      onTap: () async {
-                                        // Close the overlay first so the
-                                        // back-stack ends up: Home → Detail.
-                                        // controller.closeView(s.foodName);
-                                        try {
-                                          final food = await FoodApiService()
-                                              .searchRecipe(s.foodName);
-                                          print('Selected food: ${food?.name}'); // Debug log
-                                          if (food == null || !context.mounted) {
-                                            print('Food not found or context not mounted'); // Debug log
-                                            print(context.mounted); // Debug log
-                                            return;
-                                          }
-                                          // Await the route so we can refresh
-                                          // today's totals when the user pops
-                                          // back after adding a meal.
-                                          final added = await Navigator.of(context).push<bool>(
-                                            MaterialPageRoute(
-                                              builder: (_) => FoodDetailScreen(
-                                                food: food,
-                                              ),
-                                            ),
-                                          );
-                                          if (added == true && mounted) {
-                                            _loadTodayMeals();
-                                          }
-                                        } on RecipeApiException catch (e) {
-                                          if (!context.mounted) return;
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            SnackBar(content: Text(e.message)),
-                                          );
-                                        } catch (e) {
-                                          if (!context.mounted) return;
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            SnackBar(content: Text('ข้อผิดพลาด: $e')),
-                                          );
-                                        }
-                                      },
-                                    );
-                                  }).toList();
+                                      title: Text('ค้นหา "$query" ด้วย AI'),
+                                      subtitle: const Text(
+                                        'ใช้ AI ประมาณค่าโภชนาการ (ไม่บันทึกลงฐานข้อมูล)',
+                                      ),
+                                      onTap: () => _openFood(
+                                        context,
+                                        () => FoodApiService()
+                                            .aiSearchRecipe(query),
+                                      ),
+                                    ),
+                                  );
+
+                                  return tiles;
                                 },
                           ),
                         ),
@@ -412,7 +486,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 // Only show the section once we actually have recommendations
                 // — otherwise the heading floats above an empty row.
-                if (FoodsCard.recommended.isNotEmpty) ...[
+                if (_recommended.isNotEmpty) ...[
                   const SizedBox(height: AppTheme.spacingL),
                   Padding(
                     padding: const EdgeInsets.symmetric(
@@ -423,7 +497,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                   ),
-                  FoodsCard(),
+                  FoodsCard(foods: _recommended),
                 ],
               ],
             ),
@@ -571,7 +645,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _openTodayMeals() async {
     await Navigator.of(context).pushNamed(AppRoutes.historyRoute);
     if (!mounted) return;
+    // Deletions in History change the remaining macros too.
     _loadTodayMeals();
+    _loadRecommended();
   }
 
   // Shown when the user is signed in but their BodyMetrics are missing

@@ -3,8 +3,8 @@ import 'package:app1/models/body_metrics.dart';
 import 'package:app1/services/auth_service.dart';
 import 'package:app1/services/meals_service.dart';
 import 'package:app1/widgets/meal_history_view.dart';
+import 'package:app1/widgets/week_calendar_strip.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:app1/widgets/graph.dart';
 
 /// StatsScreen: bottom-nav tab with two sub-tabs:
@@ -31,20 +31,6 @@ class _StatsScreenState extends State<StatsScreen>
   // A getter (not a static field) so the date is recomputed on each build —
   // a static field would freeze at app-launch time and go stale past midnight.
   DateTime get _now => DateTime.now().toLocal();
-  static const _months = [
-    'มกราคม',
-    'กุมภาพันธ์',
-    'มีนาคม',
-    'เมษายน',
-    'พฤษภาคม',
-    'มิถุนายน',
-    'กรกฎาคม',
-    'สิงหาคม',
-    'กันยายน',
-    'ตุลาคม',
-    'พฤศจิกายน',
-    'ธันวาคม',
-  ];
   // Thai weekday abbreviations, Sun..Sat (also used as the graph's bar labels).
   static const _days = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
 
@@ -60,6 +46,10 @@ class _StatsScreenState extends State<StatsScreen>
   List<_DayTotals> _weekTotals = List<_DayTotals>.filled(7, const _DayTotals());
   // The daily target (TDEE adjusted by goal), drawn as the dashed line.
   int _targetKcal = _fallbackTargetKcal;
+
+  // Which day the "History" tab is showing. Driven by the WeekCalendarStrip;
+  // defaults to today.
+  DateTime _historySelected = DateTime.now();
 
   @override
   void initState() {
@@ -127,7 +117,7 @@ class _StatsScreenState extends State<StatsScreen>
   // Load the target + this week's per-day calorie totals. Metrics and meals
   // are fetched independently so a missing metrics row still lets the graph
   // render (with the fallback target).
-  Future<void> _loadWeek() async {
+  Future<void> _loadWeek({bool forceRefresh = false}) async {
     setState(() {
       _loadingWeek = true;
       _weekError = null;
@@ -135,7 +125,7 @@ class _StatsScreenState extends State<StatsScreen>
 
     BodyMetrics? metrics;
     try {
-      metrics = await AuthService.fetchBodyMetrics();
+      metrics = await AuthService.fetchBodyMetrics(forceRefresh: forceRefresh);
     } catch (_) {
       // Non-fatal: fall back to the default target below.
     }
@@ -151,7 +141,7 @@ class _StatsScreenState extends State<StatsScreen>
 
       // Fetch all seven days in parallel — much faster than awaiting each.
       final results = await Future.wait(
-        dates.map((d) => MealsService.getMealsForDate(d)),
+        dates.map((d) => MealsService.getMealsForDate(d, forceRefresh: forceRefresh)),
       );
 
       final totals = results.map(_sumDay).toList();
@@ -210,8 +200,7 @@ class _StatsScreenState extends State<StatsScreen>
               controller: _tabController,
               children: [
                 _buildOverviewTab(),
-                // MealHistoryView already handles its own padding + scrolling.
-                const MealHistoryView(),
+                _buildHistoryTab(),
               ],
             ),
           ),
@@ -225,7 +214,8 @@ class _StatsScreenState extends State<StatsScreen>
   // Pull-to-refresh re-fetches the week (e.g. after logging a meal elsewhere).
   Widget _buildOverviewTab() {
     return RefreshIndicator(
-      onRefresh: _loadWeek,
+      // Pull-to-refresh bypasses the cache for the body metrics and all 7 days.
+      onRefresh: () => _loadWeek(forceRefresh: true),
       child: SingleChildScrollView(
         // alwaysScrollable so the pull gesture works even when the content
         // doesn't overflow the viewport.
@@ -239,8 +229,6 @@ class _StatsScreenState extends State<StatsScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            _buildCalenderCard(),
-            const SizedBox(height: AppTheme.spacingL),
             _buildCalorieGraph(),
           ],
         ),
@@ -269,7 +257,10 @@ class _StatsScreenState extends State<StatsScreen>
                     ?.copyWith(color: AppTheme.subtleText),
               ),
               const SizedBox(height: AppTheme.spacingS),
-              ElevatedButton(onPressed: _loadWeek, child: const Text('ลองใหม่')),
+              ElevatedButton(
+                onPressed: () => _loadWeek(forceRefresh: true),
+                child: const Text('ลองใหม่'),
+              ),
             ],
           ),
         ),
@@ -300,101 +291,35 @@ class _StatsScreenState extends State<StatsScreen>
     );
   }
 
-  Widget _buildCalenderCard() {
+  // The "History" tab: the interactive weekly calendar strip on top driving
+  // the meal list below. The strip and the list share one selected date
+  // (_historySelected) so tapping a pill (or picking a date) reloads the list.
+  Widget _buildHistoryTab() {
     return Column(
       children: [
-        Container(
-          height: 160,
-          width: double.infinity,
-          padding: const EdgeInsets.all(AppTheme.spacingM),
-          decoration: const BoxDecoration(
-            color: AppTheme.primaryColor,
-            borderRadius: BorderRadius.all(Radius.circular(16)),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppTheme.spacingL,
+            AppTheme.spacingM,
+            AppTheme.spacingL,
+            AppTheme.spacingS,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'วันนี้ ${_now.day} ${_months[_now.month - 1]} ${_now.year}',
-                style: Theme.of(context).textTheme.titleMedium
-                    ?.copyWith(color: Colors.white),
-              ),
-              const SizedBox(height: AppTheme.spacingM),
-              Expanded(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  // Pills run Sun..Sat (index 0..6), matching [_days].
-                  children: List.generate(
-                    7,
-                    (index) => _buildWeekdayStats(index),
-                  ),
-                ),
-              ),
-            ],
+          child: WeekCalendarStrip(
+            selectedDate: _historySelected,
+            onDaySelected: (date) {
+              setState(() => _historySelected = date);
+            },
+          ),
+        ),
+        // MealHistoryView handles its own scrolling; in controlled mode it
+        // hides its built-in date Card and follows _historySelected instead.
+        Expanded(
+          child: MealHistoryView(
+            selectedDate: _historySelected,
+            showDateCard: false,
           ),
         ),
       ],
-    );
-  }
-
-  // [index] is the 0..6 slot in the Sun..Sat strip.
-  Widget _buildWeekdayStats(int index) {
-    // Today's slot in a Sun..Sat strip is weekday % 7 (Sun=0 .. Sat=6).
-    final bool isToday = index == _now.weekday % 7;
-    final int day = _now.day - ((_now.weekday % 7) - index);
-    if (day < 1 || day > 31) {
-      return const SizedBox.shrink();
-    }
-    return GestureDetector(
-      onTap: () {},
-      child: Container(
-        height: 64,
-        width: 42,
-        padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 6),
-        decoration: BoxDecoration(
-          // Fill today with a dark green so it stands out against both the
-          // green card and the white sibling pills. (A plain primaryColor fill
-          // would match the card's own colour and effectively vanish.)
-          color: isToday ? AppTheme.primaryDarkColor : Colors.white,
-          borderRadius: const BorderRadius.all(Radius.circular(30)),
-          border: Border.all(
-            color: isToday
-                ? AppTheme.primaryDarkColor
-                : const Color.fromARGB(255, 212, 212, 212),
-            width: 1,
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              _days[index],
-              style: GoogleFonts.mali(
-                fontSize: 12,
-                fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
-                color: isToday ? Colors.white : Colors.black,
-              ),
-            ),
-            Container(
-              decoration: BoxDecoration(
-                // Invert inside the highlighted pill: white circle on the dark
-                // fill keeps the day number readable.
-                color: isToday ? Colors.white : AppTheme.primarySoftColor,
-                shape: BoxShape.circle,
-              ),
-              padding: const EdgeInsets.all(6),
-              child: Text(
-                day.toString(),
-                style: GoogleFonts.mali(
-                  fontSize: 10,
-                  fontWeight: isToday ? FontWeight.w700 : FontWeight.w400,
-                  color: isToday ? AppTheme.primaryDarkColor : Colors.black,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

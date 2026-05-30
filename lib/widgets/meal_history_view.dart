@@ -16,7 +16,20 @@ import 'package:flutter/material.dart';
 /// Backend response shape is loose, so fields are read defensively
 /// (`meal['food_name'] as String?` etc.) and fall back to '—' when missing.
 class MealHistoryView extends StatefulWidget {
-  const MealHistoryView({super.key});
+  /// When non-null, the parent controls which day is shown (e.g. the Stats
+  /// History tab drives this from its [WeekCalendarStrip]). When null, this
+  /// widget owns the date itself and shows its own date-picker Card.
+  final DateTime? selectedDate;
+
+  /// Whether to render the built-in "tap to change date" Card at the top.
+  /// Set false when a parent provides its own date control above this view.
+  final bool showDateCard;
+
+  const MealHistoryView({
+    super.key,
+    this.selectedDate,
+    this.showDateCard = true,
+  });
   @override
   State<MealHistoryView> createState() => _MealHistoryViewState();
 }
@@ -38,18 +51,38 @@ String _mealTypeLabel(String type) {
 }
 
 class _MealHistoryViewState extends State<MealHistoryView> {
-  DateTime _selected = DateTime.now();
+  late DateTime _selected;
   late Future<List<Map<String, dynamic>>> _future;
 
   @override
   void initState() {
     super.initState();
+    // Seed from the parent-controlled date when given, otherwise default to
+    // today and let the internal date-picker Card drive it.
+    _selected = widget.selectedDate ?? DateTime.now();
     _future = MealsService.getMealsForDate(_selected);
   }
 
-  void _reload() {
+  @override
+  void didUpdateWidget(MealHistoryView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // In controlled mode, reload whenever the parent hands us a different day
+    // (e.g. the user tapped another pill in the WeekCalendarStrip).
+    final incoming = widget.selectedDate;
+    if (incoming != null && incoming != _selected) {
+      _selected = incoming;
+      _reload();
+    }
+  }
+
+  // [forceRefresh] bypasses the 5-min meal cache — used for pull-to-refresh and
+  // the error-retry button. Plain date switches keep using the cache.
+  void _reload({bool forceRefresh = false}) {
     setState(() {
-      _future = MealsService.getMealsForDate(_selected);
+      _future = MealsService.getMealsForDate(
+        _selected,
+        forceRefresh: forceRefresh,
+      );
     });
   }
 
@@ -123,23 +156,26 @@ class _MealHistoryViewState extends State<MealHistoryView> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(AppTheme.spacingM),
-          child: Card(
-            color: AppTheme.surfaceColor,
-            elevation: 0,
-            child: ListTile(
-              leading: const Icon(Icons.calendar_today),
-              title: Text(
-                _formattedDate,
-                style: Theme.of(context).textTheme.bodyMedium,
+        // Built-in date picker. Hidden when a parent supplies its own date
+        // control above this view (e.g. the Stats History tab's calendar strip).
+        if (widget.showDateCard)
+          Padding(
+            padding: const EdgeInsets.all(AppTheme.spacingM),
+            child: Card(
+              color: AppTheme.surfaceColor,
+              elevation: 0,
+              child: ListTile(
+                leading: const Icon(Icons.calendar_today),
+                title: Text(
+                  _formattedDate,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                subtitle: const Text('แตะเพื่อเปลี่ยนวันที่'),
+                trailing: const Icon(Icons.arrow_drop_down),
+                onTap: _pickDate,
               ),
-              subtitle: const Text('แตะเพื่อเปลี่ยนวันที่'),
-              trailing: const Icon(Icons.arrow_drop_down),
-              onTap: _pickDate,
             ),
           ),
-        ),
         Expanded(
           child: FutureBuilder<List<Map<String, dynamic>>>(
             future: _future,
@@ -148,14 +184,17 @@ class _MealHistoryViewState extends State<MealHistoryView> {
                 return const Center(child: CircularProgressIndicator());
               }
               if (snapshot.hasError) {
-                return _Error(message: '${snapshot.error}', onRetry: _reload);
+                return _Error(
+                  message: '${snapshot.error}',
+                  onRetry: () => _reload(forceRefresh: true),
+                );
               }
               final meals = snapshot.data ?? [];
               if (meals.isEmpty) {
                 return const _EmptyState();
               }
               return RefreshIndicator(
-                onRefresh: () async => _reload(),
+                onRefresh: () async => _reload(forceRefresh: true),
                 child: ListView.builder(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppTheme.spacingM,

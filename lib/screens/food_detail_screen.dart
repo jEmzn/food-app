@@ -2,6 +2,7 @@ import 'package:app1/config/app_theme.dart';
 import 'package:app1/models/food.dart';
 import 'package:app1/services/favorites_service.dart';
 import 'package:app1/services/meals_service.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -143,14 +144,14 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
     final url = widget.food.imageUrl;
     final isNetwork = url.startsWith('http://') || url.startsWith('https://');
     if (isNetwork) {
-      return Image.network(
-        url,
+      return CachedNetworkImage(
+        imageUrl: url,
         fit: BoxFit.cover,
         // If the network image fails (offline, 404, etc.) fall back to the
         // bundled asset so the screen still looks complete. We use the local
         // asset here, not Food.placeholderImage — the latter is now a network
         // URL and wouldn't load when we're offline.
-        errorBuilder: (_, __, ___) => Image.asset(
+        errorWidget: (_, __, ___) => Image.asset(
           Food.offlineFallbackAsset,
           fit: BoxFit.cover,
         ),
