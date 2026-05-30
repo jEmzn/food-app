@@ -28,7 +28,7 @@ class CategoriesWidget extends StatelessWidget {
               buildCategoriesItem(
                 context,
                 Icons.fastfood,
-                'อาหารปรุงแต่งสำเร็จ',
+                'อาหารเมนูหลัก',
               ),
               buildCategoriesItem(context, Icons.cake, 'อาหารหวาน'),
               buildCategoriesItem(context, Icons.local_drink, 'เครื่องดื่ม'),

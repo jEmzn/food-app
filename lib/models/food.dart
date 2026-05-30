@@ -1,3 +1,5 @@
+import 'package:app1/config/api_config.dart';
+
 /// A food item shown on cards, search results, and the detail screen.
 ///
 /// Mirrors the backend `food_catalog` table: serving is expressed as
@@ -9,8 +11,26 @@
 /// `imageUrl` may be either a network URL (starts with http/https) or a local
 /// asset path — the detail screen picks the right Image widget at render time.
 class Food {
-  /// Local asset used when the backend has no image for a food yet.
-  static const String placeholderImage = 'assets/images/food_image.png';
+  /// Placeholder shown when a food has no image of its own.
+  ///
+  /// This points at the backend's static placeholder
+  /// (`/static/food-placeholder.png`), the SAME image the server's
+  /// `services/foodImage.js` returns when no real photo is found. Building it
+  /// from [ApiConfig.baseUrl] keeps the app and server in agreement on one
+  /// placeholder, and keeps the URL reachable from the app's point of view
+  /// (the server's own `PUBLIC_BASE_URL` may use an IP the emulator can't hit).
+  ///
+  /// Because this is now a network URL, it's loaded with `Image.network`. For
+  /// the rare case where even this can't load (device offline), fall back to
+  /// [offlineFallbackAsset], which is bundled in the app.
+  static const String placeholderImage =
+      '${ApiConfig.baseUrl}/static/food-placeholder.png';
+
+  /// Bundled last-resort image used only when a network image AND the network
+  /// [placeholderImage] both fail to load (e.g. the device is offline). Kept
+  /// as a local asset so the UI never renders an empty box.
+  static const String offlineFallbackAsset = 'assets/images/food_image.png';
+
 
   /// The `food_catalog` primary key. Always present because every search
   /// inserts into `food_catalog` first and returns the persisted row.

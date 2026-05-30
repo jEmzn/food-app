@@ -1,6 +1,8 @@
 import 'package:app1/config/app_theme.dart';
 import 'package:app1/models/food.dart';
+import 'package:app1/services/favorites_service.dart';
 import 'package:app1/services/meals_service.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -58,6 +60,47 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
   // and shows a spinner so the user can't double-submit.
   bool _submitting = false;
 
+  // True while a favorite add/remove request is in flight — disables the
+  // heart button so a quick double-tap can't fire two conflicting requests.
+  bool _favoriting = false;
+
+  // Whether this food is currently one of the user's favorites. Loaded from
+  // GET /favorites in initState, then flipped optimistically on each tap.
+  bool _isFavorite = false;
+
+  // The favorite row's own id (from GET /favorites). We need this to call
+  // DELETE /favorites/dl/:id when un-favoriting. Null when not a favorite.
+  String? _favoriteId;
+
+  @override
+  void initState() {
+    super.initState();
+    // Load the user's favorites once so the heart starts in the right state
+    // (filled if this food is already a favorite). Fire-and-forget: if it
+    // fails we just leave the heart empty rather than blocking the screen.
+    _loadFavoriteState();
+  }
+
+  // Fetch the user's favorites and check whether THIS food is among them.
+  // If so, remember the favorite row's id so we can delete it later.
+  Future<void> _loadFavoriteState() async {
+    try {
+      final favorites = await FavoritesService.getFavorites();
+      // Find the row whose food_catalog_id matches this food, if any.
+      final match = favorites.where(
+        (f) => f['food_catalog_id']?.toString() == widget.food.id,
+      );
+      if (!mounted || match.isEmpty) return;
+      setState(() {
+        _isFavorite = true;
+        _favoriteId = match.first['id']?.toString();
+      });
+    } catch (e) {
+      // Non-fatal: the screen still works, the heart just stays empty.
+      print('[loadFavoriteState] failed: $e'); // Debug log
+    }
+  }
+
   // Bulk units (g/ml) feel right with a 10-step; discrete units like
   // "medium" or "cup" feel right with a 0.5-step. Pick based on unit.
   bool get _isBulkUnit {
@@ -101,13 +144,15 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
     final url = widget.food.imageUrl;
     final isNetwork = url.startsWith('http://') || url.startsWith('https://');
     if (isNetwork) {
-      return Image.network(
-        url,
+      return CachedNetworkImage(
+        imageUrl: url,
         fit: BoxFit.cover,
-        // If the network image fails (offline, 404, etc.) fall back to
-        // the bundled placeholder so the screen still looks complete.
-        errorBuilder: (_, __, ___) => Image.asset(
-          Food.placeholderImage,
+        // If the network image fails (offline, 404, etc.) fall back to the
+        // bundled asset so the screen still looks complete. We use the local
+        // asset here, not Food.placeholderImage — the latter is now a network
+        // URL and wouldn't load when we're offline.
+        errorWidget: (_, __, ___) => Image.asset(
+          Food.offlineFallbackAsset,
           fit: BoxFit.cover,
         ),
       );
@@ -208,6 +253,43 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
                   Icons.arrow_back,
                   color: AppTheme.primaryHardColor,
                 ),
+              ),
+            ),
+          ),
+        ),
+        // Favorite (heart) button — mirrors the back button on the right.
+        // Filled red heart once added; shows a small spinner while saving.
+        Positioned(
+          top: 12,
+          right: 16,
+          child: Material(
+            color: Colors.white,
+            shape: const CircleBorder(),
+            elevation: 4,
+            shadowColor: AppTheme.shadowColor,
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              // Disable the tap only while a request is in flight; otherwise
+              // tapping toggles the favorite on/off.
+              onTap: _favoriting ? null : _toggleFavorite,
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: _favoriting
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          valueColor:
+                              AlwaysStoppedAnimation(AppTheme.primaryHardColor),
+                        ),
+                      )
+                    : Icon(
+                        _isFavorite ? Icons.favorite : Icons.favorite_border,
+                        color: _isFavorite
+                            ? Colors.red
+                            : AppTheme.primaryHardColor,
+                      ),
               ),
             ),
           ),
@@ -353,6 +435,52 @@ class _FoodDetailScreenState extends State<FoodDetailScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  // Toggle this food's favorite status. If it's not a favorite yet we POST
+  // /favorites; if it already is, we DELETE it by the stored favorite id.
+  Future<void> _toggleFavorite() async {
+    if (_favoriting) return; // guard against double-tap while a call is running
+    setState(() => _favoriting = true);
+
+    try {
+      if (_isFavorite) {
+        // Un-favorite. We need the row id we stored when loading/adding.
+        // (Guard: if for some reason we don't have it, just bail out.)
+        final id = _favoriteId;
+        if (id == null) return;
+        await FavoritesService.removeFavorite(id);
+        if (!mounted) return;
+        setState(() {
+          _isFavorite = false;
+          _favoriteId = null;
+        });
+        _showFavoriteSnack('นำ ${widget.food.name} ออกจากอาหารโปรดแล้ว');
+      } else {
+        // Add to favorites. The backend returns the new row (incl. its id),
+        // which we keep so the user can immediately un-favorite it.
+        final favorite = await FavoritesService.addFavorite(widget.food.id);
+        if (!mounted) return;
+        setState(() {
+          _isFavorite = true;
+          _favoriteId = favorite['id']?.toString();
+        });
+        _showFavoriteSnack('เพิ่ม ${widget.food.name} ลงในอาหารโปรดแล้ว');
+      }
+    } catch (e) {
+      print('[toggleFavorite] failed: $e'); // Debug log
+      if (!mounted) return;
+      _showFavoriteSnack('ไม่สามารถอัปเดตอาหารโปรดได้ กรุณาลองใหม่อีกครั้ง');
+    } finally {
+      if (mounted) setState(() => _favoriting = false);
+    }
+  }
+
+  // Small helper so the add/remove/error paths share one SnackBar style.
+  void _showFavoriteSnack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
     );
   }
 

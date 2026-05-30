@@ -1,24 +1,20 @@
 import 'package:app1/config/app_theme.dart';
 import 'package:app1/models/food.dart';
 import 'package:app1/screens/food_detail_screen.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class FoodsCard extends StatelessWidget {
-  const FoodsCard({super.key});
+  // Recommended foods to show, supplied by the parent (HomeScreen fetches them
+  // from GET /recommendations). HomeScreen only renders this widget when the
+  // list is non-empty, so we don't need an empty-state here.
+  final List<Food> foods;
 
-  // Mock list of recommended foods. Once the backend exposes a
-  // /recommended endpoint we'll fetch real data here. Exposed as a static
-  // field so HomeScreen can hide the "Recommended Foods" heading while this
-  // is empty (avoids a bare header above an empty row).
-  static final List<Food> recommended = <Food>[
-    // Numbers are per the listed quantity+unit (e.g. "1 medium apple").
-  ];
+  const FoodsCard({super.key, required this.foods});
 
   @override
   Widget build(BuildContext context) {
-    final foods = recommended;
-
     return SingleChildScrollView(
       padding: const EdgeInsets.only(
         left: AppTheme.spacingL,
@@ -55,13 +51,16 @@ Widget buildFoodsCard(
   final isNetwork =
       imagePath.startsWith('http://') || imagePath.startsWith('https://');
   final image = isNetwork
-      ? Image.network(
-          imagePath,
+      ? CachedNetworkImage(
+          imageUrl: imagePath,
           height: 220,
           width: 220,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) =>
-              Image.asset(Food.placeholderImage, height: 220, width: 220),
+          // The network image failed (offline, 404, …). Fall back to the
+          // bundled asset — Food.placeholderImage is itself a network URL now,
+          // so it wouldn't help if we're offline.
+          errorWidget: (_, __, ___) =>
+              Image.asset(Food.offlineFallbackAsset, height: 220, width: 220),
         )
       : Image.asset(imagePath, height: 220, width: 220);
 

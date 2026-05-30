@@ -3,8 +3,10 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:app1/config/api_config.dart';
 import 'package:app1/models/body_metrics.dart';
+import 'package:app1/services/cache/request_cache.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart' show MediaType;
 
 class AuthService {
   static const String _baseUrl = ApiConfig.baseUrl;
@@ -94,7 +96,25 @@ class AuthService {
       ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body) as Map<String, dynamic>;
+        final profile = jsonDecode(response.body) as Map<String, dynamic>;
+
+        // Restore the avatar after a reinstall / new device: the backend keeps
+        // photo_url, but a fresh Firebase session may have an empty photoURL.
+        // If so, copy the stored URL back into Firebase so the existing
+        // photoURL-based avatar widgets render it without extra plumbing.
+        final storedPhoto = profile['photo_url'] as String?;
+        if (storedPhoto != null &&
+            storedPhoto.isNotEmpty &&
+            (user?.photoURL == null || user!.photoURL!.isEmpty)) {
+          try {
+            await user?.updatePhotoURL(storedPhoto);
+            await user?.reload();
+          } catch (_) {
+            // Non-fatal: login still succeeds even if the sync fails.
+          }
+        }
+
+        return profile;
       }
       return fallback;
     } on TimeoutException {
@@ -107,7 +127,20 @@ class AuthService {
   /// Fetches the current user's latest body metrics from
   /// GET /users/body-metrics. Returns null if the user has no row yet
   /// (server returns 200 with body `null`). Throws on network/auth errors.
-  static Future<BodyMetrics?> fetchBodyMetrics() async {
+  ///
+  /// Cached in-memory for 15 minutes (key `bodyMetrics`) since profile data
+  /// rarely changes; [saveBodyMetrics] invalidates it. Pass [forceRefresh] to
+  /// bypass a fresh cache entry.
+  static Future<BodyMetrics?> fetchBodyMetrics({bool forceRefresh = false}) {
+    return RequestCache.instance.getOrFetch<BodyMetrics?>(
+      'bodyMetrics',
+      ttl: const Duration(minutes: 15),
+      forceRefresh: forceRefresh,
+      fetch: _fetchBodyMetrics,
+    );
+  }
+
+  static Future<BodyMetrics?> _fetchBodyMetrics() async {
     final token = await getToken();
     final url = '$_baseUrl/users/body-metrics';
     final response = await http.get(
@@ -151,6 +184,75 @@ class AuthService {
         'Failed to save body metrics (${response.statusCode}): ${response.body}',
       );
     }
+    // The newly inserted row is now the source of truth — drop the cached copy
+    // so the next fetchBodyMetrics() reflects the change.
+    RequestCache.instance.invalidate('bodyMetrics');
+  }
+
+  /// Uploads [image] as the user's profile picture via multipart
+  /// POST /users/avatar. The backend stores the file and saves its public URL
+  /// on the users row, returning `{ "photo_url": "..." }`.
+  ///
+  /// We then mirror that URL into Firebase Auth's photoURL. Every avatar widget
+  /// in the app already reads `currentUser.photoURL`, so this single line makes
+  /// the new picture appear everywhere without touching those screens.
+  ///
+  /// Returns the stored URL. Throws on a non-200 response so the UI can show a
+  /// localized error message.
+  static Future<String> uploadAvatar(File image) async {
+    final token = await getToken();
+
+    // Pick the MIME type from the file extension. Without an explicit
+    // contentType, MultipartFile defaults to application/octet-stream for the
+    // camera's temp file, which the backend's image-only filter rejects (400).
+    // image_picker re-encodes to JPEG when imageQuality is set, so jpeg is the
+    // safe fallback.
+    final ext = image.path.split('.').last.toLowerCase();
+    final contentType = switch (ext) {
+      'png' => MediaType('image', 'png'),
+      'webp' => MediaType('image', 'webp'),
+      _ => MediaType('image', 'jpeg'),
+    };
+
+    // MultipartRequest sets the correct multipart/form-data boundary for us;
+    // the field name "avatar" must match upload.single("avatar") on the server.
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$_baseUrl/users/avatar'),
+    )
+      ..headers['Authorization'] = 'Bearer $token'
+      ..files.add(await http.MultipartFile.fromPath(
+        'avatar',
+        image.path,
+        contentType: contentType,
+      ));
+
+    final streamed = await request.send().timeout(const Duration(seconds: 20));
+    final response = await http.Response.fromStream(streamed);
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Failed to upload avatar (${response.statusCode}): ${response.body}',
+      );
+    }
+
+    final url =
+        (jsonDecode(response.body) as Map<String, dynamic>)['photo_url']
+            as String;
+
+    // The backend reuses a deterministic filename (<uid>.jpg), so the URL is
+    // identical on every upload. Flutter caches NetworkImage by URL, so without
+    // this the avatar would never visibly change after the first upload. Append
+    // a timestamp so each upload yields a unique URL that bypasses the cache.
+    final bustedUrl =
+        '$url?v=${DateTime.now().millisecondsSinceEpoch}';
+
+    // Mirror into Firebase so photoURL-based display updates everywhere.
+    final user = _auth.currentUser;
+    await user?.updatePhotoURL(bustedUrl);
+    await user?.reload();
+
+    return bustedUrl;
   }
 
   /// Updates the Firebase display name. The backend reads name from the
@@ -171,6 +273,9 @@ class AuthService {
 
   /// Signs out of Firebase.
   static Future<void> logout() async {
+    // Wipe the in-memory cache first so a subsequent login as a different user
+    // can never see the previous user's cached meals/metrics/recommendations.
+    RequestCache.instance.clear();
     await _auth.signOut();
   }
 

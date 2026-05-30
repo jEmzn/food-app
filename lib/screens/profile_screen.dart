@@ -1,10 +1,14 @@
+import 'dart:io';
+
 import 'package:app1/config/app_theme.dart';
 import 'package:app1/config/routes.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:app1/services/auth_service.dart';
 import 'package:app1/widgets/top_label.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -15,6 +19,12 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   static const String _fallbackProfileImage = 'assets/images/test_profile.jpg';
+
+  final ImagePicker _picker = ImagePicker();
+
+  // True while an avatar upload is in flight, so we can show a spinner over the
+  // avatar and block a second tap from starting a parallel upload.
+  bool _uploadingAvatar = false;
 
   // `isLogout` below flags the destructive option by its index, so reordering
   // or translating these labels is safe.
@@ -38,11 +48,65 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Navigator.of(context).pushNamed(route);
   }
 
-  // Avatar tap: still a placeholder until we add image upload.
-  void _showComingSoon() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('เร็ว ๆ นี้')),
+  // Avatar edit tap: ask where to get the photo, pick it, then upload.
+  Future<void> _changeAvatar() async {
+    if (_uploadingAvatar) return; // already uploading — ignore extra taps
+
+    // Let the user choose between the camera and the photo gallery.
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: Text('ถ่ายรูป', style: GoogleFonts.mali()),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: Text('เลือกจากคลังภาพ', style: GoogleFonts.mali()),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
     );
+    if (source == null) return; // user dismissed the sheet
+
+    // Everything below can throw — pickImage included (e.g. a
+    // MissingPluginException if the app wasn't fully rebuilt after adding the
+    // image_picker plugin). Keep it all inside try/catch so any failure shows
+    // a message instead of silently doing nothing.
+    try {
+      // Downscale + compress on-device so we don't upload huge originals.
+      final XFile? picked = await _picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        imageQuality: 85,
+      );
+      if (picked == null) return; // user cancelled the picker
+
+      setState(() => _uploadingAvatar = true);
+
+      await AuthService.uploadAvatar(File(picked.path));
+      if (!mounted) return;
+      // uploadAvatar already refreshed Firebase photoURL; rebuild to show it.
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('อัปเดตรูปโปรไฟล์แล้ว')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      // Surface the real error text so problems (no plugin, server down, auth)
+      // are visible while developing instead of failing silently.
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('อัปโหลดรูปไม่สำเร็จ: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _uploadingAvatar = false);
+    }
   }
 
   Future<void> _confirmLogout() async {
@@ -85,7 +149,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   ImageProvider _resolveAvatar(User? user) {
     final url = user?.photoURL;
     if (url != null && url.isNotEmpty) {
-      return NetworkImage(url);
+      // CachedNetworkImageProvider is a drop-in ImageProvider that caches to
+      // disk. The avatar URL carries a ?v=<timestamp> cache-buster after each
+      // upload, so a new picture is a new cache key and still updates.
+      return CachedNetworkImageProvider(url);
     }
     return const AssetImage(_fallbackProfileImage);
   }
@@ -131,12 +198,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         width: 4,
                       ),
                     ),
+                    // While uploading, dim the avatar and show a spinner so the
+                    // user knows their new photo is being saved.
+                    child: _uploadingAvatar
+                        ? Container(
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.black38,
+                            ),
+                            child: const Center(
+                              child: SizedBox(
+                                width: 28,
+                                height: 28,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 3,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          )
+                        : null,
                   ),
                   Positioned(
                     bottom: -4,
                     right: -4,
                     child: GestureDetector(
-                      onTap: _showComingSoon,
+                      onTap: _uploadingAvatar ? null : _changeAvatar,
                       child: Container(
                         decoration: const BoxDecoration(
                           color: Colors.black54,
