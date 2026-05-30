@@ -47,6 +47,10 @@ Authentication is two-layered:
 The interface is fully localized to **Thai**, using the rounded *Mali* font for
 Thai + Latin glyph coverage.
 
+Network reads are wrapped in a lightweight in-memory cache (`RequestCache`) with
+per-key TTLs, so switching tabs or re-rendering doesn't re-hit the backend.
+Writes invalidate the affected keys; logout clears the whole cache.
+
 ---
 
 ## Tech Stack
@@ -55,12 +59,13 @@ Thai + Latin glyph coverage.
 | ------------ | ------------------------------------------- |
 | Mobile       | Flutter (Dart, SDK `^3.9.2`)                |
 | Auth         | Firebase Authentication                     |
-| Backend API  | Node.js — `http://192.168.1.13:3000`        |
+| Backend API  | Node.js — `ApiConfig.baseUrl` (default `http://10.0.2.2:3000`) |
 | Database     | PostgreSQL (server-side only)               |
-| Networking   | `http` package                              |
+| Networking   | `http` package (multipart for avatar upload) |
+| Images       | `image_picker`, `cached_network_image`      |
 | Typography   | `google_fonts` (Mali)                       |
 
-**Direct dependencies:** `flutter`, `firebase_core`, `firebase_auth`, `http`, `google_fonts`.
+**Direct dependencies:** `flutter`, `firebase_core`, `firebase_auth`, `http`, `http_parser`, `google_fonts`, `image_picker`, `cached_network_image`.
 
 ---
 
@@ -68,10 +73,11 @@ Thai + Latin glyph coverage.
 
 - **Sign up / Sign in** — Firebase email/password auth, synced to PostgreSQL via the backend.
 - **Onboarding** — Collects body measurements, activity level, and goal type on first login.
-- **Home** — Browse and search foods.
+- **Home** — Browse and search foods, plus **recommended foods** that fit your remaining daily calorie/macro budget.
+- **Food search** — DB-first autocomplete and lookup; an explicit "ค้นหาด้วย AI" action falls back to a (paid) AI nutrition estimate when a dish isn't in the catalog yet.
 - **Favorites** — Save frequently used foods.
-- **Stats** — Nutrition summaries and charts, derived from the user's BMI / BMR / TDEE.
-- **Profile** — User info, body metrics, history, and settings.
+- **Stats** — Nutrition summaries and charts (BMI / BMR / TDEE), with a weekly calendar strip to browse meal history by day.
+- **Profile** — User info, body metrics, history, settings, and **profile photo upload** (mirrored into Firebase `photoURL`).
 
 ---
 
@@ -101,14 +107,17 @@ flutter doctor
 flutter run
 ```
 
-> **Note:** This README is git-ignored and local-only. It documents the project
-> but is not part of the tracked source.
+> **Note:** Firebase config files and `firebase_options.dart` are environment-specific
+> and are **not** committed — generate them yourself (see [Configuration](#configuration)).
 
 ---
 
 ## Configuration
 
 - **Backend URL** — set in `lib/config/api_config.dart` (`ApiConfig.baseUrl`); used app-wide.
+  The default `http://10.0.2.2:3000` is the Android emulator's loopback to the host
+  machine. For a physical device, use the host's LAN IP (e.g. `http://192.168.x.x:3000`);
+  for the iOS simulator or desktop/web, `http://localhost:3000`.
 - **Firebase** — see below.
 
 ### Firebase
@@ -169,10 +178,13 @@ lib/
 │   ├── profile/          # Profile sub-screens (info, history, settings, about…)
 │   └── *.dart            # HomeScreen, FavoritesScreen, StatsScreen, FoodDetailScreen…
 ├── services/
-│   ├── auth_service.dart  # Firebase auth + backend registration / body metrics
-│   ├── api_service.dart   # FoodApiService — food search & recipe suggestions
-│   └── meals_service.dart # Meals CRUD against /meals
-└── widgets/             # Reusable UI components (nav, cards, charts…)
+│   ├── auth_service.dart            # Firebase auth + registration, body metrics, avatar upload
+│   ├── api_service.dart            # FoodApiService — DB search/suggest + explicit AI search
+│   ├── meals_service.dart          # Meals CRUD against /meals (cache-aware)
+│   ├── recommendations_service.dart # GET /recommendations — remaining-budget food picks
+│   └── cache/
+│       └── request_cache.dart      # RequestCache — in-memory TTL cache shared by services
+└── widgets/             # Reusable UI components (nav, cards, charts, week_calendar_strip…)
 ```
 
 > All data is served by the backend over HTTP — there is no local SQLite layer.
@@ -191,6 +203,7 @@ lib/
 | name         | text      |                    |
 | email        | text      | unique, not null   |
 | firebase_uid | text      | unique, not null   |
+| photo_url    | text      | avatar URL; mirrored to Firebase `photoURL` |
 | created_at   | timestamp |                    |
 
 ### `user_body_metrics`
